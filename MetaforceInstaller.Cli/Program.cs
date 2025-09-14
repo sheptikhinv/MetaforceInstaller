@@ -1,61 +1,81 @@
-﻿using System.Reflection;
-using AdvancedSharpAdbClient;
-using AdvancedSharpAdbClient.DeviceCommands;
-using AdvancedSharpAdbClient.Models;
+﻿using MetaforceInstaller.Cli.Utils;
+using MetaforceInstaller.Core.Services;
 
 namespace MetaforceInstaller.Cli;
 
-class Program
+static class Program
 {
-    // 1. Получить имя апк и зипки, если не предоставлены - забить дефолтными значениями
-    // 2. Распаковать в временную директорию adb (готово)
-    // 3. Установить апк
-    // 4. Получить имя пакета
-    // 5. Сформировать строку пути для контента
-    // 6. Копировать зип по сформированному пути
-
-    static AdbClient adbClient;
-    static DeviceData deviceData;
-
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
         try
         {
-            var (apkPath, zipPath, outputPath) = ParseArguments(args);
+            var installationRequest = ArgumentParser.ParseArguments(args);
 
-            if (string.IsNullOrEmpty(apkPath) || string.IsNullOrEmpty(zipPath) || string.IsNullOrEmpty(outputPath))
+            if (installationRequest is null ||
+                string.IsNullOrEmpty(installationRequest.ApkPath) ||
+                string.IsNullOrEmpty(installationRequest.ZipPath))
             {
                 ShowUsage();
                 return;
             }
 
-            var adbPath = ExtractAdbFiles();
+            var adbService = new AdbService();
 
-            var server = new AdbServer();
-            var result = server.StartServer(adbPath, restartServerIfNewer: false);
-            Console.WriteLine($"ADB сервер запущен: {result}");
+            var apkInfo = ApkScrapper.GetApkInfo(installationRequest.ApkPath);
+            var zipName = Path.GetFileName(installationRequest.ZipPath);
+            var outputPath =
+                @$"/storage/emulated/0/Android/data/{apkInfo.PackageName}/files/{zipName}";
 
-            adbClient = new AdbClient();
+            // Подписка на события прогресса
+            adbService.ProgressChanged += OnProgressChanged;
+            adbService.StatusChanged += OnStatusChanged;
 
-            var devices = adbClient.GetDevices();
+            // Получение информации об устройстве
+            var deviceInfo = adbService.GetDeviceInfo();
+            Console.WriteLine($"Найдено устройство: {deviceInfo.SerialNumber}");
+            Console.WriteLine($"Состояние: {deviceInfo.State}");
+            Console.WriteLine($"Модель: {deviceInfo.Model} - {deviceInfo.Name}");
+            Console.WriteLine();
 
-            if (!devices.Any())
-            {
-                Console.WriteLine("Устройства не найдены. Подключите Android-устройство и включите отладку по USB.");
-                return;
-            }
+            // Создание объекта для отслеживания прогресса
+            var progress = new Progress<MetaforceInstaller.Core.Models.ProgressInfo>(OnProgressReport);
 
-            deviceData = devices.FirstOrDefault();
-            Console.WriteLine($"Найдено устройство: {deviceData.Serial}");
-            Console.WriteLine($"Состояние: {deviceData.State}");
-            Console.WriteLine($"Имя устройства: {deviceData.Name} - {deviceData.Model}");
+            // Установка APK
+            await adbService.InstallApkAsync(installationRequest.ApkPath, progress);
+            Console.WriteLine();
 
-            InstallApk(apkPath);
-            CopyFileToDevice(zipPath, outputPath);
+            // Копирование файла
+            await adbService.CopyFileAsync(installationRequest.ZipPath, outputPath, progress);
+            Console.WriteLine();
+
+            Console.WriteLine("Операция завершена успешно!");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Ошибка: {ex.Message}");
+        }
+    }
+
+    private static void OnProgressChanged(object? sender, MetaforceInstaller.Core.Models.ProgressInfo e)
+    {
+        DrawProgressBar(e.PercentageComplete, e.BytesTransferred, e.TotalBytes);
+    }
+
+    private static void OnStatusChanged(object? sender, string e)
+    {
+        Console.WriteLine(e);
+    }
+
+    private static void OnProgressReport(MetaforceInstaller.Core.Models.ProgressInfo progressInfo)
+    {
+        if (progressInfo.TotalBytes > 0)
+        {
+            DrawProgressBar(progressInfo.PercentageComplete, progressInfo.BytesTransferred, progressInfo.TotalBytes);
+        }
+        else
+        {
+            // Для случаев без информации о байтах (например, установка APK)
+            DrawProgressBar(progressInfo.PercentageComplete, 0, 100);
         }
     }
 
@@ -78,168 +98,36 @@ class Program
         Console.WriteLine("  MetaforceInstaller.exe -a app.apk -c data.zip -o /sdcard/data.zip");
     }
 
-
-    private static (string? apkPath, string? zipPath, string? outputPath) ParseArguments(string[] args)
+    private static void DrawProgressBar(int progress, long receivedBytes, long totalBytes)
     {
-        string apkPath = null;
-        string zipPath = null;
-        string outputPath = null;
+        Console.SetCursorPosition(0, Console.CursorTop);
 
-        for (int i = 0; i < args.Length; i++)
+        var barLength = 40;
+        var filledLength = (int)(barLength * progress / 100.0);
+
+        var bar = "[" + new string('█', filledLength) + new string('░', barLength - filledLength) + "]";
+
+        string bytesText = "";
+        if (totalBytes > 0)
         {
-            switch (args[i].ToLower())
-            {
-                case "--apk":
-                case "-a":
-                    if (i + 1 < args.Length)
-                    {
-                        apkPath = args[i + 1];
-                        i++;
-                    }
-
-                    break;
-
-                case "--content":
-                case "-c":
-                    if (i + 1 < args.Length)
-                    {
-                        zipPath = args[i + 1];
-                        i++;
-                    }
-
-                    break;
-
-                case "--output":
-                case "-o":
-                    if (i + 1 < args.Length)
-                    {
-                        outputPath = args[i + 1];
-                        i++;
-                    }
-
-                    break;
-
-                case "--help":
-                case "-h":
-                    ShowUsage();
-                    Environment.Exit(0);
-                    break;
-            }
+            bytesText = $" {FormatBytes(receivedBytes)} / {FormatBytes(totalBytes)}";
         }
 
-        return (apkPath, zipPath, outputPath);
+        Console.Write($"\r{bar} {progress}%{bytesText}");
     }
 
-    private static void ExtractResource(string resourceName, string outputPath)
+    private static string FormatBytes(long bytes)
     {
-        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
-        using var fileStream = File.Create(outputPath);
-        stream.CopyTo(fileStream);
-    }
+        string[] suffixes = ["B", "KB", "MB", "GB", "TB"];
+        var counter = 0;
+        double number = bytes;
 
-    private static string ExtractAdbFiles()
-    {
-        var tempDir = Path.Combine(Path.GetTempPath(), "MetaforceInstaller", "adb");
-        Directory.CreateDirectory(tempDir);
-
-        var adbPath = Path.Combine(tempDir, "adb.exe");
-
-        if (!File.Exists(adbPath))
+        while (Math.Round(number / 1024) >= 1)
         {
-            ExtractResource("MetaforceInstaller.Cli.adb.adb.exe", adbPath);
-            ExtractResource("MetaforceInstaller.Cli.adb.AdbWinApi.dll", Path.Combine(tempDir, "AdbWinApi.dll"));
-            ExtractResource("MetaforceInstaller.Cli.adb.AdbWinUsbApi.dll", Path.Combine(tempDir, "AdbWinUsbApi.dll"));
+            number /= 1024;
+            counter++;
         }
 
-        return adbPath;
+        return $"{number:N1} {suffixes[counter]}";
     }
-
-    private static void InstallApk(string apkPath)
-    {
-        try
-        {
-            if (!File.Exists(apkPath))
-            {
-                Console.WriteLine($"APK файл не найден: {apkPath}");
-                return;
-            }
-
-            Console.WriteLine($"Установка APK: {apkPath}");
-
-            var packageManager = new PackageManager(adbClient, deviceData);
-            packageManager.InstallPackage(apkPath, new Action<InstallProgressEventArgs>(o => { }));
-
-            Console.WriteLine("APK успешно установлен!");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Ошибка установки APK: {ex.Message}");
-        }
-    }
-
-private static void CopyFileToDevice(string localPath, string remotePath)
-{
-    try
-    {
-        if (!File.Exists(localPath))
-        {
-            Console.WriteLine($"Локальный файл не найден: {localPath}");
-            return;
-        }
-
-        Console.WriteLine($"Копирование файла {localPath} в {remotePath}");
-
-        var lastProgress = -1;
-
-        using var fileStream = File.OpenRead(localPath);
-        var syncService = new SyncService(adbClient, deviceData);
-        
-        syncService.Push(fileStream, remotePath, UnixFileStatus.DefaultFileMode, DateTime.Now, 
-            new Action<SyncProgressChangedEventArgs>(progress =>
-            {
-                var currentProgress = progress.ProgressPercentage;
-                
-                if (currentProgress != lastProgress)
-                {
-                    lastProgress = (int)currentProgress;
-                    DrawProgressBar(lastProgress, progress.ReceivedBytesSize, progress.TotalBytesToReceive);
-                }
-            }));
-
-        Console.WriteLine();
-        Console.WriteLine("Файл успешно скопирован!");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Ошибка копирования файла: {ex.Message}");
-    }
-}
-
-private static void DrawProgressBar(int progress, long receivedBytes, long totalBytes)
-{
-    Console.SetCursorPosition(0, Console.CursorTop);
-    
-    var barLength = 40;
-    var filledLength = (int)(barLength * progress / 100.0);
-    
-    var bar = "[" + new string('█', filledLength) + new string('░', barLength - filledLength) + "]";
-    var bytesText = $" {FormatBytes(receivedBytes)} / {FormatBytes(totalBytes)}";
-    
-    Console.Write($"\r{bar} {progress}%{bytesText}");
-}
-
-private static string FormatBytes(long bytes)
-{
-    string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
-    var counter = 0;
-    double number = bytes;
-    
-    while (Math.Round(number / 1024) >= 1)
-    {
-        number /= 1024;
-        counter++;
-    }
-    
-    return $"{number:N1} {suffixes[counter]}";
-}
 }

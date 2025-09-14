@@ -1,0 +1,49 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="MetaforceInstaller.UI.MainWindow"
+        Title="MetaforceInstaller">
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Main Content Area -->
+        <Grid Grid.Row="0" Margin="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*"/>  <!-- 30% -->
+                <ColumnDefinition Width="7*"/>  <!-- 70% -->
+            </Grid.ColumnDefinitions>
+            
+            <!-- Left Panel - Buttons -->
+            <StackPanel Grid.Column="0" Margin="20" Spacing="15">
+                <Button Name="ChooseApkButton" Content="Choose .apk" 
+                        HorizontalAlignment="Stretch"/>
+                
+                <Button Name="ChooseContentButton" Content="Choose .zip" 
+                        HorizontalAlignment="Stretch"/>
+                
+                <Button Name="InstallButton" Content="Install" 
+                        HorizontalAlignment="Stretch"/>
+            </StackPanel>
+            
+            <!-- Right Panel - Logs -->
+            <TextBox Grid.Column="1" Name="LogsTextBox" 
+                     IsReadOnly="True" 
+                     AcceptsReturn="True" 
+                     TextWrapping="Wrap"
+                     FontFamily="Consolas,Courier New,monospace"
+                     Focusable="False"
+                     Margin="4,0,0,0"/>
+        </Grid>
+        
+        <!-- Progress Bar at Bottom -->
+        <ProgressBar Grid.Row="1" Name="InstallProgressBar" 
+                     Height="20" Minimum="0" Maximum="100" Value="0" 
+                     Margin="8"/>
+    </Grid>
+</Window>
