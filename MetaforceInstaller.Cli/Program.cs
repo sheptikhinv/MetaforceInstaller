@@ -13,14 +13,18 @@ static class Program
 
             if (installationRequest is null ||
                 string.IsNullOrEmpty(installationRequest.ApkPath) ||
-                string.IsNullOrEmpty(installationRequest.ZipPath) ||
-                string.IsNullOrEmpty(installationRequest.OutputPath))
+                string.IsNullOrEmpty(installationRequest.ZipPath))
             {
                 ShowUsage();
                 return;
             }
 
             var adbService = new AdbService();
+
+            var apkInfo = ApkScrapper.GetApkInfo(installationRequest.ApkPath);
+            var zipName = Path.GetFileName(installationRequest.ZipPath);
+            var outputPath =
+                @$"/storage/emulated/0/Android/data/{apkInfo.PackageName}/files/{zipName}";
 
             // Подписка на события прогресса
             adbService.ProgressChanged += OnProgressChanged;
@@ -41,7 +45,7 @@ static class Program
             Console.WriteLine();
 
             // Копирование файла
-            await adbService.CopyFileAsync(installationRequest.ZipPath, installationRequest.OutputPath, progress);
+            await adbService.CopyFileAsync(installationRequest.ZipPath, outputPath, progress);
             Console.WriteLine();
 
             Console.WriteLine("Операция завершена успешно!");
