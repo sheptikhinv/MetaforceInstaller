@@ -5,7 +5,7 @@ namespace MetaforceInstaller.Cli;
 
 static class Program
 {
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
         try
         {
@@ -22,36 +22,56 @@ static class Program
 
             var adbService = new AdbService();
 
-            adbService.InstallApk(installationRequest.ApkPath);
-            adbService.CopyFile(installationRequest.ZipPath, installationRequest.OutputPath);
+            // Подписка на события прогресса
+            adbService.ProgressChanged += OnProgressChanged;
+            adbService.StatusChanged += OnStatusChanged;
 
-            //     var adbPath = ExtractAdbFiles();
-            //
-            //     var server = new AdbServer();
-            //     var result = server.StartServer(adbPath, restartServerIfNewer: false);
-            //     Console.WriteLine($"ADB сервер запущен: {result}");
-            //
-            //     adbClient = new AdbClient();
-            //
-            //     var devices = adbClient.GetDevices();
-            //
-            //     if (!devices.Any())
-            //     {
-            //         Console.WriteLine("Устройства не найдены. Подключите Android-устройство и включите отладку по USB.");
-            //         return;
-            //     }
-            //
-            //     deviceData = devices.FirstOrDefault();
-            //     Console.WriteLine($"Найдено устройство: {deviceData.Serial}");
-            //     Console.WriteLine($"Состояние: {deviceData.State}");
-            //     Console.WriteLine($"Имя устройства: {deviceData.Name} - {deviceData.Model}");
-            //
-            //     InstallApk(installationRequest.ApkPath);
-            //     CopyFileToDevice(installationRequest.ZipPath, installationRequest.OutputPath);
+            // Получение информации об устройстве
+            var deviceInfo = adbService.GetDeviceInfo();
+            Console.WriteLine($"Найдено устройство: {deviceInfo.SerialNumber}");
+            Console.WriteLine($"Состояние: {deviceInfo.State}");
+            Console.WriteLine($"Модель: {deviceInfo.Model} - {deviceInfo.Name}");
+            Console.WriteLine();
+
+            // Создание объекта для отслеживания прогресса
+            var progress = new Progress<MetaforceInstaller.Core.Models.ProgressInfo>(OnProgressReport);
+
+            // Установка APK
+            await adbService.InstallApkAsync(installationRequest.ApkPath, progress);
+            Console.WriteLine();
+
+            // Копирование файла
+            await adbService.CopyFileAsync(installationRequest.ZipPath, installationRequest.OutputPath, progress);
+            Console.WriteLine();
+
+            Console.WriteLine("Операция завершена успешно!");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Ошибка: {ex.Message}");
+        }
+    }
+
+    private static void OnProgressChanged(object? sender, MetaforceInstaller.Core.Models.ProgressInfo e)
+    {
+        DrawProgressBar(e.PercentageComplete, e.BytesTransferred, e.TotalBytes);
+    }
+
+    private static void OnStatusChanged(object? sender, string e)
+    {
+        Console.WriteLine(e);
+    }
+
+    private static void OnProgressReport(MetaforceInstaller.Core.Models.ProgressInfo progressInfo)
+    {
+        if (progressInfo.TotalBytes > 0)
+        {
+            DrawProgressBar(progressInfo.PercentageComplete, progressInfo.BytesTransferred, progressInfo.TotalBytes);
+        }
+        else
+        {
+            // Для случаев без информации о байтах (например, установка APK)
+            DrawProgressBar(progressInfo.PercentageComplete, 0, 100);
         }
     }
 
@@ -82,7 +102,12 @@ static class Program
         var filledLength = (int)(barLength * progress / 100.0);
 
         var bar = "[" + new string('█', filledLength) + new string('░', barLength - filledLength) + "]";
-        var bytesText = $" {FormatBytes(receivedBytes)} / {FormatBytes(totalBytes)}";
+
+        string bytesText = "";
+        if (totalBytes > 0)
+        {
+            bytesText = $" {FormatBytes(receivedBytes)} / {FormatBytes(totalBytes)}";
+        }
 
         Console.Write($"\r{bar} {progress}%{bytesText}");
     }
