@@ -177,27 +177,69 @@ class Program
         }
     }
 
-    private static void CopyFileToDevice(string localPath, string remotePath)
+private static void CopyFileToDevice(string localPath, string remotePath)
+{
+    try
     {
-        try
+        if (!File.Exists(localPath))
         {
-            if (!File.Exists(localPath))
+            Console.WriteLine($"Локальный файл не найден: {localPath}");
+            return;
+        }
+
+        Console.WriteLine($"Копирование файла {localPath} в {remotePath}");
+
+        var lastProgress = -1;
+
+        using var fileStream = File.OpenRead(localPath);
+        var syncService = new SyncService(adbClient, deviceData);
+        
+        syncService.Push(fileStream, remotePath, UnixFileStatus.DefaultFileMode, DateTime.Now, 
+            new Action<SyncProgressChangedEventArgs>(progress =>
             {
-                Console.WriteLine($"Локальный файл не найден: {localPath}");
-                return;
-            }
+                var currentProgress = progress.ProgressPercentage;
+                
+                if (currentProgress != lastProgress)
+                {
+                    lastProgress = (int)currentProgress;
+                    DrawProgressBar(lastProgress, progress.ReceivedBytesSize, progress.TotalBytesToReceive);
+                }
+            }));
 
-            Console.WriteLine($"Копирование файла {localPath} в {remotePath}");
-
-            using var fileStream = File.OpenRead(localPath);
-            var syncService = new SyncService(adbClient, deviceData);
-            syncService.Push(fileStream, remotePath, UnixFileStatus.DefaultFileMode, DateTime.Now, null);
-
-            Console.WriteLine("Файл успешно скопирован!");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Ошибка копирования файла: {ex.Message}");
-        }
+        Console.WriteLine();
+        Console.WriteLine("Файл успешно скопирован!");
     }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Ошибка копирования файла: {ex.Message}");
+    }
+}
+
+private static void DrawProgressBar(int progress, long receivedBytes, long totalBytes)
+{
+    Console.SetCursorPosition(0, Console.CursorTop);
+    
+    var barLength = 40;
+    var filledLength = (int)(barLength * progress / 100.0);
+    
+    var bar = "[" + new string('█', filledLength) + new string('░', barLength - filledLength) + "]";
+    var bytesText = $" {FormatBytes(receivedBytes)} / {FormatBytes(totalBytes)}";
+    
+    Console.Write($"\r{bar} {progress}%{bytesText}");
+}
+
+private static string FormatBytes(long bytes)
+{
+    string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
+    var counter = 0;
+    double number = bytes;
+    
+    while (Math.Round(number / 1024) >= 1)
+    {
+        number /= 1024;
+        counter++;
+    }
+    
+    return $"{number:N1} {suffixes[counter]}";
+}
 }
