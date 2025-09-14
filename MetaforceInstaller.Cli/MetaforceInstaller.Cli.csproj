@@ -14,7 +14,7 @@
     <ItemGroup>
         <EmbeddedResource Include="adb\adb.exe" />
         <EmbeddedResource Include="adb\AdbWinApi.dll" />
-        <EmbeddedResource Include="adb\AdbWinApi.dll" />
+        <EmbeddedResource Include="adb\AdbWinUsbApi.dll" />
     </ItemGroup>
 
 </Project>
