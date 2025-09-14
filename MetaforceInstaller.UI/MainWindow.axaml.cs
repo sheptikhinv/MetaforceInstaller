@@ -15,7 +15,7 @@ public partial class MainWindow : Window
 {
     private string? _apkPath;
     private string? _zipPath;
-    private readonly AdbService _adbService;
+    private AdbService _adbService;
 
     private const int PROGRESS_LOG_STEP = 10;
     private const int PROGRESS_UPDATE_STEP = 1;
@@ -179,6 +179,8 @@ public partial class MainWindow : Window
             return;
         }
 
+        _adbService.RefreshDeviceData();
+
         InstallButton.IsEnabled = false;
         InstallProgressBar.Value = 0;
 
@@ -222,7 +224,6 @@ public partial class MainWindow : Window
         var timestamp = DateTime.Now.ToString("HH:mm:ss");
         LogsTextBox.Text += $"[{timestamp}] {message}\n";
 
-        // Прокручиваем к концу
         var scrollViewer = LogsTextBox.FindAncestorOfType<ScrollViewer>();
         scrollViewer?.ScrollToEnd();
     }
