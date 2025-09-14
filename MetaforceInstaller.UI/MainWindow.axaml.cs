@@ -4,7 +4,10 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
+using MetaforceInstaller.Core.Models;
+using MetaforceInstaller.Core.Services;
 
 namespace MetaforceInstaller.UI;
 
@@ -12,16 +15,106 @@ public partial class MainWindow : Window
 {
     private string? _apkPath;
     private string? _zipPath;
+    private readonly AdbService _adbService;
+
+    private const int PROGRESS_LOG_STEP = 10;
+    private const int PROGRESS_UPDATE_STEP = 1;
+
+    private int _lastLoggedProgress = -1;
+    private int _lastUpdatedProgress = -1;
 
     public MainWindow()
     {
         InitializeComponent();
+
+        LogMessage("SLAVAGM ЛЕГЕНДА И ВЫ ЭТО ЗНАЕТЕ");
+
+        _adbService = new AdbService();
+        _adbService.ProgressChanged += OnAdbProgressChanged;
+        _adbService.StatusChanged += OnAdbStatusChanged;
+
         CheckAndEnableInstallButton();
 
         ChooseApkButton.Click += OnChooseApkClicked;
         ChooseContentButton.Click += OnChooseContentClicked;
         InstallButton.Click += OnInstallClicked;
     }
+
+    private void OnAdbProgressChanged(object? sender, ProgressInfo e)
+    {
+        Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (e.PercentageComplete != _lastUpdatedProgress &&
+                e.PercentageComplete % PROGRESS_UPDATE_STEP == 0)
+            {
+                InstallProgressBar.Value = e.PercentageComplete;
+                _lastUpdatedProgress = e.PercentageComplete;
+            }
+
+            if (e.PercentageComplete != _lastLoggedProgress &&
+                e.PercentageComplete % PROGRESS_LOG_STEP == 0 || e.PercentageComplete == 100)
+            {
+                LogMessage(
+                    e.TotalBytes > 0
+                        ? $"Прогресс: {e.PercentageComplete}% ({FormatBytes(e.BytesTransferred)} / {FormatBytes(e.TotalBytes)})"
+                        : $"Прогресс: {e.PercentageComplete}%");
+
+                _lastLoggedProgress = e.PercentageComplete;
+            }
+        });
+    }
+
+    private void OnProgressReport(ProgressInfo progressInfo)
+    {
+        Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (progressInfo.PercentageComplete != _lastUpdatedProgress &&
+                progressInfo.PercentageComplete % PROGRESS_UPDATE_STEP == 0)
+            {
+                InstallProgressBar.Value = progressInfo.PercentageComplete;
+                _lastUpdatedProgress = progressInfo.PercentageComplete;
+            }
+
+
+            if (progressInfo.PercentageComplete != _lastLoggedProgress &&
+                (progressInfo.PercentageComplete % PROGRESS_LOG_STEP == 0 || progressInfo.PercentageComplete == 100))
+            {
+                LogMessage(
+                    progressInfo.TotalBytes > 0
+                        ? $"Прогресс: {progressInfo.PercentageComplete}% ({FormatBytes(progressInfo.BytesTransferred)} / {FormatBytes(progressInfo.TotalBytes)})"
+                        : $"Прогресс: {progressInfo.PercentageComplete}%");
+
+                _lastLoggedProgress = progressInfo.PercentageComplete;
+            }
+        });
+    }
+
+    private void OnAdbStatusChanged(object? sender, string e)
+    {
+        Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            InstallProgressBar.Value = 0;
+            _lastLoggedProgress = -1;
+            _lastUpdatedProgress = -1;
+            LogMessage(e);
+        });
+    }
+
+    private string FormatBytes(long bytes)
+    {
+        string[] suffixes = ["B", "KB", "MB", "GB", "TB"];
+        var counter = 0;
+        double number = bytes;
+
+        while (Math.Round(number / 1024) >= 1)
+        {
+            number /= 1024;
+            counter++;
+        }
+
+        return $"{number:N1} {suffixes[counter]}";
+    }
+
 
     private async void CheckAndEnableInstallButton()
     {
@@ -93,8 +186,23 @@ public partial class MainWindow : Window
         {
             LogMessage("Начинаем установку...");
 
-            // Здесь будет ваша логика установки
-            await SimulateInstallation();
+            var deviceInfo = _adbService.GetDeviceInfo();
+            LogMessage($"Найдено устройство: {deviceInfo.SerialNumber}");
+            LogMessage($"Состояние: {deviceInfo.State}");
+            LogMessage($"Модель: {deviceInfo.Model} - {deviceInfo.Name}");
+
+            var progress = new Progress<ProgressInfo>(OnProgressReport);
+
+            await _adbService.InstallApkAsync(_apkPath, progress);
+
+            var apkInfo = ApkScrapper.GetApkInfo(_apkPath);
+            LogMessage($"Ставим {apkInfo.PackageName} версии {apkInfo.VersionName}");
+            var zipName = Path.GetFileName(_zipPath);
+            var outputPath =
+                @$"/storage/emulated/0/Android/data/{apkInfo.PackageName}/files/{zipName}";
+            LogMessage($"Начинаем копирование контента в {outputPath}");
+
+            await _adbService.CopyFileAsync(_zipPath, outputPath, progress);
 
             LogMessage("Установка завершена успешно!");
         }
@@ -117,15 +225,5 @@ public partial class MainWindow : Window
         // Прокручиваем к концу
         var scrollViewer = LogsTextBox.FindAncestorOfType<ScrollViewer>();
         scrollViewer?.ScrollToEnd();
-    }
-
-    private async Task SimulateInstallation()
-    {
-        for (int i = 0; i <= 100; i += 10)
-        {
-            InstallProgressBar.Value = i;
-            LogMessage($"Прогресс: {i}%");
-            await Task.Delay(500); // Симуляция работы
-        }
     }
 }

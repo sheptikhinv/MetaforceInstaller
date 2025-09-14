@@ -26,10 +26,6 @@ public class AdbService : IAdbService
         var serverStatus = server.StartServer(adbPath, restartServerIfNewer: false);
         _adbClient = new AdbClient();
         var devices = _adbClient.GetDevices();
-        foreach (var device in devices)
-        {
-            Console.WriteLine(device.Model);
-        }
         _deviceData = devices.FirstOrDefault();
     }
 
