@@ -20,9 +20,16 @@
             <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
+        <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="11.3.0.4" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\MetaforceInstaller.Core\MetaforceInstaller.Core.csproj" />
     </ItemGroup>
+
+    <ItemGroup>
+        <AvaloniaResource Include="Images\logo_black.svg" />
+        <AvaloniaResource Include="Images\logo_white.svg" />
+    </ItemGroup>
+
 </Project>
