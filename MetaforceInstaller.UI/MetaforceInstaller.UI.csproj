@@ -30,6 +30,7 @@
     <ItemGroup>
         <AvaloniaResource Include="Images\logo_black.svg" />
         <AvaloniaResource Include="Images\logo_white.svg" />
+        <AvaloniaResource Include="Images\logo_red.svg" />
     </ItemGroup>
 
 </Project>

@@ -10,11 +10,11 @@
         <ResourceDictionary>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
-                    <SvgImage x:Key="Logo" Source="/Images/logo_black.svg"/>
+                    <SvgImage x:Key="Logo" Source="/Images/logo_red.svg"/>
                 </ResourceDictionary>
                 
                 <ResourceDictionary x:Key="Dark">
-                    <SvgImage x:Key="Logo" Source="/Images/logo_white.svg"/>
+                    <SvgImage x:Key="Logo" Source="/Images/logo_red.svg"/>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
