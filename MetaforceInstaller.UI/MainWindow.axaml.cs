@@ -27,7 +27,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        LogMessage("SLAVAGM ЛЕГЕНДА И ВЫ ЭТО ЗНАЕТЕ");
+        LogMessage("MetaforceInstaller by slavagm");
 
         _adbService = new AdbService();
         _adbService.ProgressChanged += OnAdbProgressChanged;
