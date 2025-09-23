@@ -2,6 +2,7 @@ using System.Reflection;
 using AdvancedSharpAdbClient;
 using AdvancedSharpAdbClient.DeviceCommands;
 using AdvancedSharpAdbClient.Models;
+using AdvancedSharpAdbClient.Receivers;
 using MetaforceInstaller.Core.Intefaces;
 using MetaforceInstaller.Core.Models;
 using Microsoft.Extensions.Logging;
@@ -153,6 +154,17 @@ public class AdbService : IAdbService
                 CurrentFile = Path.GetFileName(localPath),
                 TotalBytes = fileInfo.Length
             });
+
+            var remoteDir = Path.GetDirectoryName(remotePath)?.Replace('\\', '/');
+            if (!string.IsNullOrEmpty(remoteDir))
+            {
+                var reciever = new ConsoleOutputReceiver();
+                await Task.Run(
+                    () => { _adbClient.ExecuteRemoteCommand($"mkdir -p \"{remoteDir}\"", _deviceData, reciever); },
+                    cancellationToken);
+            }
+            
+            _logger.LogInformation($"Ensured remote directory: {remoteDir}");
 
             await Task.Run(() =>
             {
