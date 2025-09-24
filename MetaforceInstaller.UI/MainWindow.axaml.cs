@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using System.Threading.Tasks;
+using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -28,6 +28,9 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         LogMessage("MetaforceInstaller by slavagm");
+        VersionTextBlock.Text = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
+
 
         _adbService = new AdbService();
         _adbService.ProgressChanged += OnAdbProgressChanged;
