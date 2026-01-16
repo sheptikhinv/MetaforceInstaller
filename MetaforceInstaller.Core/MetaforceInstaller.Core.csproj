@@ -8,8 +8,14 @@
 
     <ItemGroup>
       <EmbeddedResource Include="adb\adb.exe" />
-      <EmbeddedResource Include="adb\AdbWinApi.dll" />
-      <EmbeddedResource Include="adb\AdbWinUsbApi.dll" />
+        <EmbeddedResource Include="adb\AdbWinApi.dll">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <Link>AdbWinApi.dll</Link>
+        </EmbeddedResource>
+        <EmbeddedResource Include="adb\AdbWinUsbApi.dll">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <Link>AdbWinUsbApi.dll</Link>
+        </EmbeddedResource>
     </ItemGroup>
 
         <ItemGroup>
