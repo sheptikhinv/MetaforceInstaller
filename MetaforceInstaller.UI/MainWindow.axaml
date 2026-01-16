@@ -45,12 +45,19 @@
                         HorizontalAlignment="Stretch" />
             </StackPanel>
 
-            <Image Grid.Column="0"
-                   Margin="20"
-                   VerticalAlignment="Bottom"
-                   Source="{DynamicResource Logo}"
-                   HorizontalAlignment="Center">
-            </Image>
+            <StackPanel Grid.Column="0" Margin="20" Spacing="15" VerticalAlignment="Bottom">
+                <Image
+                    Margin="20"
+                    VerticalAlignment="Bottom"
+                    Source="{DynamicResource Logo}"
+                    HorizontalAlignment="Center">
+                </Image>
+                <TextBlock
+                    Name="VersionTextBlock"
+                    FontFamily="Consolas,Courier New,monospace"
+                    FontSize="14"
+                    HorizontalAlignment="Center" />
+            </StackPanel>
 
             <!-- Right Panel - Logs -->
             <TextBox Grid.Column="1" Name="LogsTextBox"

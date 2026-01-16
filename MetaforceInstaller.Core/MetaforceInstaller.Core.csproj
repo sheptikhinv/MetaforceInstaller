@@ -7,20 +7,21 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <EmbeddedResource Include="adb\adb.exe" />
-      <EmbeddedResource Include="adb\AdbWinApi.dll" />
-      <EmbeddedResource Include="adb\AdbWinUsbApi.dll" />
+        <EmbeddedResource Include="adb\adb.exe"/>
+        <EmbeddedResource Include="adb\AdbWinApi.dll">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <Link>AdbWinApi.dll</Link>
+        </EmbeddedResource>
+        <EmbeddedResource Include="adb\AdbWinUsbApi.dll">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <Link>AdbWinUsbApi.dll</Link>
+        </EmbeddedResource>
     </ItemGroup>
 
-        <ItemGroup>
-          <PackageReference Include="AlphaOmega.ApkReader" Version="2.0.5" />
-          <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
-          <PackageReference Include="AdvancedSharpAdbClient" Version="3.4.14" />
-        </ItemGroup>
-
     <ItemGroup>
-      <PackageReference Include="AdvancedSharpAdbClient" Version="3.4.14" />
-      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
+        <PackageReference Include="AlphaOmega.ApkReader" Version="2.0.5"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0"/>
+        <PackageReference Include="AdvancedSharpAdbClient" Version="3.4.14"/>
     </ItemGroup>
 
 </Project>
