@@ -53,8 +53,6 @@ public class AdbService : IAdbService
 
         if (File.Exists(adbPath)) return adbPath;
         ExtractResource("MetaforceInstaller.Core.adb.adb.exe", adbPath);
-        ExtractResource("MetaforceInstaller.Core.adb.AdbWinApi.dll", Path.Combine(tempDir, "AdbWinApi.dll"));
-        ExtractResource("MetaforceInstaller.Core.adb.AdbWinUsbApi.dll", Path.Combine(tempDir, "AdbWinUsbApi.dll"));
 
         return adbPath;
     }
