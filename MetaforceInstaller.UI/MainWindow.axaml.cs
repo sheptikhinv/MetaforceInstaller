@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -30,17 +31,27 @@ public partial class MainWindow : Window
         LogMessage("MetaforceInstaller by slavagm");
         VersionTextBlock.Text = Assembly.GetExecutingAssembly()
             .GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
-
-
-        _adbService = new AdbService();
-        _adbService.ProgressChanged += OnAdbProgressChanged;
-        _adbService.StatusChanged += OnAdbStatusChanged;
+        
+        _ = InitializeAdbAsync();
 
         CheckAndEnableInstallButton();
 
         ChooseApkButton.Click += OnChooseApkClicked;
         ChooseContentButton.Click += OnChooseContentClicked;
         InstallButton.Click += OnInstallClicked;
+    }
+
+    private async Task InitializeAdbAsync()
+    {
+        LogMessage("Инициализация ADB сервера...");
+        await Task.Run(() =>
+        {
+            _adbService = new AdbService();
+            _adbService.ProgressChanged += OnAdbProgressChanged;
+            _adbService.StatusChanged += OnAdbStatusChanged;
+        });
+        
+        LogMessage("ADB сервер готов");
     }
 
     private void OnAdbProgressChanged(object? sender, ProgressInfo e)
@@ -179,6 +190,12 @@ public partial class MainWindow : Window
         if (string.IsNullOrEmpty(_apkPath) || string.IsNullOrEmpty(_zipPath))
         {
             LogMessage("Ошибка: Выберите APK файл и папку с контентом");
+            return;
+        }
+
+        if (_adbService == null)
+        {
+            LogMessage("ADB сервис еще инициализируется, попробуйте позже");
             return;
         }
 
