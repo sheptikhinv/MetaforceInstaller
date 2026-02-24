@@ -53,7 +53,8 @@
                         HorizontalAlignment="Stretch" />
 
                 <Button Content="Install"
-                        HorizontalAlignment="Stretch" /><!-- Command="{Binding InstallCommand}" --><!-- IsEnabled="{Binding CanInstall}" -->
+                        Command="{Binding InstallCommand}"
+                        HorizontalAlignment="Stretch" />
             </StackPanel>
 
             <StackPanel Grid.Column="0" Margin="20" Spacing="15" VerticalAlignment="Bottom">

@@ -20,10 +20,59 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public ICommand ChooseApkCommand { get; }
     public ICommand ChooseZipCommand { get; }
+    public ICommand InstallCommand { get; }
 
-    public string? ApkPath { get; private set; }
-    public string? ZipPath { get; private set; }
+    private string _apkPath;
 
+    public string? ApkPath
+    {
+        get => _apkPath;
+        private set
+        {
+            if (_apkPath == value) return;
+            _apkPath = value;
+            RaisePropertyChanged(nameof(ApkPath));
+            RaisePropertyChanged(nameof(CanInstall));
+            UpdateCommandStates();
+        }
+    }
+
+    private string _zipPath;
+
+    public string? ZipPath
+    {
+        get => _zipPath;
+        private set
+        {
+            if (_zipPath == value) return;
+            _zipPath = value;
+            RaisePropertyChanged(nameof(ZipPath));
+            RaisePropertyChanged(nameof(CanInstall));
+            UpdateCommandStates();
+        }
+    }
+
+    private bool _isInstalling;
+
+    public bool IsInstalling
+    {
+        get => _isInstalling;
+        private set
+        {
+            if (_isInstalling == value) return;
+            _isInstalling = value;
+            RaisePropertyChanged(nameof(IsInstalling));
+            RaisePropertyChanged(nameof(CanInstall));
+            UpdateCommandStates();
+        }
+    }
+
+    public bool CanInstall =>
+        !IsInstalling &&
+        !string.IsNullOrWhiteSpace(ApkPath) &&
+        !string.IsNullOrWhiteSpace(ZipPath);
+
+    public bool CanPickFile => !IsInstalling;
 
     public string LogsText => _logBuffer.Text;
 
@@ -43,8 +92,9 @@ public partial class MainWindowViewModel : ViewModelBase
         _logBuffer.Changed += () =>
             Dispatcher.UIThread.Post(() => RaisePropertyChanged(nameof(LogsText)));
 
-        ChooseApkCommand = new AsyncCommand(ChooseApkAsync);
-        ChooseZipCommand = new AsyncCommand(ChooseZipAsync);
+        ChooseApkCommand = new AsyncCommand(ChooseApkAsync, () => CanPickFile);
+        ChooseZipCommand = new AsyncCommand(ChooseZipAsync, () => CanPickFile);
+        InstallCommand = new AsyncCommand(InstallAsync, () => CanInstall);
 
         _logger.LogInformation("MetaforceInstaller started");
     }
@@ -57,7 +107,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 FileTypeName: "APK Files",
                 Patterns: ["*.apk"])
         );
-
+        _logger.LogInformation($"Chosen APK path: {ApkPath}");
         RaisePropertyChanged(nameof(ApkPath));
     }
 
@@ -69,6 +119,31 @@ public partial class MainWindowViewModel : ViewModelBase
                 FileTypeName: "ZIP Files",
                 Patterns: ["*.zip"])
         );
+        RaisePropertyChanged(nameof(ZipPath));
+        _logger.LogInformation($"Chosen ZIP path: {ZipPath}");
+    }
+
+    private async Task InstallAsync()
+    {
+        if (!CanInstall)
+            return;
+
+        IsInstalling = true;
+        try
+        {
+            await Task.Delay(500);
+        }
+        finally
+        {
+            IsInstalling = false;
+        }
+    }
+
+    private void UpdateCommandStates()
+    {
+        (ChooseApkCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+        (ChooseZipCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+        (InstallCommand as AsyncCommand)?.RaiseCanExecuteChanged();
     }
 
     private MainWindowViewModel()
