@@ -115,8 +115,8 @@ public class AdbBinaryProvider : IAdbBinaryProvider
         var asm = Assembly.GetAssembly(typeof(AdbBinaryProvider)) ?? Assembly.GetExecutingAssembly();
 
         var resourceCandidate = OperatingSystem.IsWindows()
-            ? "MetaforceInstaller.Core.adb.adb.exe"
-            : "MetaforceInstaller.Core.adb.adb";
+            ? "MetaforceInstaller.Core.adb.win_x64.adb.exe"
+            : "MetaforceInstaller.Core.adb.linux_x64.adb";
 
         Stream? stream = null;
         stream = asm.GetManifestResourceStream(resourceCandidate);

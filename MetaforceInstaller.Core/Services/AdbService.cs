@@ -5,7 +5,6 @@ using AdvancedSharpAdbClient.Receivers;
 using MetaforceInstaller.Core.Intefaces;
 using MetaforceInstaller.Core.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MetaforceInstaller.Core.Services;
 
@@ -19,15 +18,16 @@ public class AdbService : IAdbService
     public event EventHandler<ProgressInfo>? ProgressChanged;
     public event EventHandler<string>? StatusChanged;
 
-    public AdbService(ILogger<AdbService>? logger = null, IAdbBinaryProvider? adbBinaryProvider = null)
+    public AdbService(ILogger<AdbService> logger, IAdbBinaryProvider adbBinaryProvider)
     {
-        _logger = logger ?? new NullLogger<AdbService>();
-        _adbBinaryProvider = adbBinaryProvider ?? new AdbBinaryProvider(new NullLogger<AdbBinaryProvider>());
+        _logger = logger;
+        _adbBinaryProvider = adbBinaryProvider;
         var adbPath = _adbBinaryProvider.GetAdbPath();
         var server = new AdbServer();
-        var serverStatus = server.StartServer(adbPath, restartServerIfNewer: false);
+        server.StartServer(adbPath, restartServerIfNewer: false);
         _adbClient = new AdbClient();
         RefreshDeviceData();
+        _logger.LogInformation("ADB service initialized");
     }
 
     public void RefreshDeviceData()
@@ -36,15 +36,11 @@ public class AdbService : IAdbService
         _deviceData = devices.FirstOrDefault();
     }
 
-    private void OnProgressChanged(ProgressInfo progressInfo)
-    {
+    private void OnProgressChanged(ProgressInfo progressInfo) =>
         ProgressChanged?.Invoke(this, progressInfo);
-    }
 
-    private void OnStatusChanged(string status)
-    {
+    private void OnStatusChanged(string status) =>
         StatusChanged?.Invoke(this, status);
-    }
 
     public void InstallApk(string apkPath)
     {
