@@ -45,10 +45,12 @@
             <!-- Left Panel - Buttons -->
             <StackPanel Grid.Column="0" Margin="20" Spacing="15">
                 <Button Content="Choose .apk"
-                        HorizontalAlignment="Stretch" /><!-- Command="{Binding ChooseApkCommand}" -->
+                        Command="{Binding ChooseApkCommand}"
+                        HorizontalAlignment="Stretch" />
 
                 <Button Content="Choose .zip"
-                        HorizontalAlignment="Stretch" /><!-- Command="{Binding ChooseContentCommand}" -->
+                        Command="{Binding ChooseZipCommand}"
+                        HorizontalAlignment="Stretch" />
 
                 <Button Content="Install"
                         HorizontalAlignment="Stretch" /><!-- Command="{Binding InstallCommand}" --><!-- IsEnabled="{Binding CanInstall}" -->
