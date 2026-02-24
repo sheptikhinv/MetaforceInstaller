@@ -1,4 +1,5 @@
-using MetaforceInstaller.Core.Intefaces;
+using AdvancedSharpAdbClient;
+using MetaforceInstaller.Core.Interfaces;
 using MetaforceInstaller.Core.Services;
 using MetaforceInstaller.UI.Logging;
 using MetaforceInstaller.UI.ViewModels;
@@ -14,7 +15,11 @@ public static class ServiceCollectionExtensions
         // UI log sink (will be bound to TextBox via VM)
         services.AddSingleton<LogBuffer>();
         services.AddSingleton<IAdbBinaryProvider, AdbBinaryProvider>();
-        services.AddSingleton<IAdbService, AdbService>();
+        services.AddSingleton<IAdbServerController, AdbServerController>();
+        services.AddSingleton<IDeviceProvider, AdbDeviceProvider>();
+        services.AddSingleton<IAdbOperations, AdbOperations>();
+        services.AddSingleton<IAdbService, AdbServiceV2>();
+        services.AddSingleton<AdbClient>();
 
         // Plug LogBuffer into Microsoft.Extensions.Logging pipeline
         services.AddSingleton<ILoggerProvider, LogBufferLoggerProvider>();

@@ -1,4 +1,4 @@
-namespace MetaforceInstaller.Core.Intefaces;
+namespace MetaforceInstaller.Core.Interfaces;
 
 public interface IAdbBinaryProvider
 {

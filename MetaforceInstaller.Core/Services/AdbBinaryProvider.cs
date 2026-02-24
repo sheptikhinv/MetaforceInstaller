@@ -1,5 +1,5 @@
 using System.Reflection;
-using MetaforceInstaller.Core.Intefaces;
+using MetaforceInstaller.Core.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace MetaforceInstaller.Core.Services;

@@ -2,7 +2,7 @@ using AdvancedSharpAdbClient;
 using AdvancedSharpAdbClient.DeviceCommands;
 using AdvancedSharpAdbClient.Models;
 using AdvancedSharpAdbClient.Receivers;
-using MetaforceInstaller.Core.Intefaces;
+using MetaforceInstaller.Core.Interfaces;
 using MetaforceInstaller.Core.Models;
 using Microsoft.Extensions.Logging;
 
@@ -175,5 +175,11 @@ public class AdbService : IAdbService
     public DeviceInfo GetDeviceInfo()
     {
         return new DeviceInfo(_deviceData.Serial, _deviceData.State.ToString(), _deviceData.Model, _deviceData.Name);
+    }
+
+    public async Task PerformInstallAsync(string apkPath, string localPath, IProgress<ProgressInfo>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
     }
 }

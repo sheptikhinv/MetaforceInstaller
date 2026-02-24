@@ -3,7 +3,8 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Avalonia.Threading;
-using MetaforceInstaller.Core.Intefaces;
+using MetaforceInstaller.Core.Interfaces;
+using MetaforceInstaller.Core.Models;
 using MetaforceInstaller.UI.Infrastructure;
 using MetaforceInstaller.UI.Logging;
 using Microsoft.Extensions.Logging;
@@ -64,6 +65,19 @@ public partial class MainWindowViewModel : ViewModelBase
             RaisePropertyChanged(nameof(IsInstalling));
             RaisePropertyChanged(nameof(CanInstall));
             UpdateCommandStates();
+        }
+    }
+
+    private double _progressValue;
+
+    public double ProgressValue
+    {
+        get => _progressValue;
+        private set
+        {
+            if (Math.Abs(_progressValue - value) < 0.001) return;
+            _progressValue = value;
+            RaisePropertyChanged(nameof(ProgressValue));
         }
     }
 
@@ -129,9 +143,20 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
 
         IsInstalling = true;
+
+        ProgressValue = 0;
+        
+        var uiProgress = new Progress<ProgressInfo>(info =>
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                ProgressValue = Math.Clamp(info.PercentageComplete, 0, 100);
+            });
+        });
+        
         try
         {
-            await Task.Delay(500);
+            await _adbService.PerformInstallAsync(ApkPath, ZipPath, uiProgress, default);
         }
         finally
         {
@@ -146,7 +171,7 @@ public partial class MainWindowViewModel : ViewModelBase
         (InstallCommand as AsyncCommand)?.RaiseCanExecuteChanged();
     }
 
-    private MainWindowViewModel()
+    public MainWindowViewModel()
     {
     }
 }
