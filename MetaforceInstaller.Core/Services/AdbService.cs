@@ -1,4 +1,3 @@
-using System.Reflection;
 using AdvancedSharpAdbClient;
 using AdvancedSharpAdbClient.DeviceCommands;
 using AdvancedSharpAdbClient.Models;
@@ -13,16 +12,18 @@ namespace MetaforceInstaller.Core.Services;
 public class AdbService : IAdbService
 {
     private readonly ILogger<AdbService> _logger;
+    private readonly IAdbBinaryProvider _adbBinaryProvider;
     private readonly AdbClient _adbClient;
     private DeviceData _deviceData;
 
     public event EventHandler<ProgressInfo>? ProgressChanged;
     public event EventHandler<string>? StatusChanged;
 
-    public AdbService(ILogger<AdbService>? logger = null)
+    public AdbService(ILogger<AdbService>? logger = null, IAdbBinaryProvider? adbBinaryProvider = null)
     {
         _logger = logger ?? new NullLogger<AdbService>();
-        var adbPath = GetAdbPath();
+        _adbBinaryProvider = adbBinaryProvider ?? new AdbBinaryProvider(new NullLogger<AdbBinaryProvider>());
+        var adbPath = _adbBinaryProvider.GetAdbPath();
         var server = new AdbServer();
         var serverStatus = server.StartServer(adbPath, restartServerIfNewer: false);
         _adbClient = new AdbClient();
@@ -33,28 +34,6 @@ public class AdbService : IAdbService
     {
         var devices = _adbClient.GetDevices();
         _deviceData = devices.FirstOrDefault();
-    }
-
-    private void ExtractResource(string resourceName, string outputPath)
-    {
-        _logger.LogInformation($"Extracting resource: {resourceName} to {outputPath}");
-        using var stream = Assembly.GetAssembly(typeof(AdbService)).GetManifestResourceStream(resourceName);
-        using var fileStream = File.Create(outputPath);
-        stream.CopyTo(fileStream);
-        _logger.LogInformation($"Resource extracted: {resourceName} to {outputPath}");
-    }
-
-    private string GetAdbPath()
-    {
-        var tempDir = Path.Combine(Path.GetTempPath(), "MetaforceInstaller", "adb");
-        Directory.CreateDirectory(tempDir);
-
-        var adbPath = Path.Combine(tempDir, "adb.exe");
-
-        if (File.Exists(adbPath)) return adbPath;
-        ExtractResource("MetaforceInstaller.Core.adb.adb.exe", adbPath);
-
-        return adbPath;
     }
 
     private void OnProgressChanged(ProgressInfo progressInfo)
