@@ -20,7 +20,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAdbServerLifetime, AdbServerLifetime>();
         services.AddSingleton<IDeviceProvider, AdbDeviceProvider>();
         services.AddSingleton<IAdbOperations, AdbOperations>();
-        services.AddSingleton<IAdbService, AdbServiceV2>();
+        services.AddSingleton<IAdbService, AdbService>();
         services.AddSingleton<AdbClient>();
 
         // Plug LogBuffer into Microsoft.Extensions.Logging pipeline
