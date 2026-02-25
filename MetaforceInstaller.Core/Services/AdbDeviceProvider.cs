@@ -11,6 +11,7 @@ public class AdbDeviceProvider : IDeviceProvider, IAsyncDisposable
 {
     private readonly ILogger<AdbDeviceProvider> _logger;
     private readonly AdbClient _adbClient;
+    private readonly IAdbServerLifetime _adbServerLifetime;
 
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -18,10 +19,11 @@ public class AdbDeviceProvider : IDeviceProvider, IAsyncDisposable
     private DeviceMonitor? _deviceMonitor;
     private bool _monitorStarted;
 
-    public AdbDeviceProvider(ILogger<AdbDeviceProvider> logger, AdbClient adbClient)
+    public AdbDeviceProvider(ILogger<AdbDeviceProvider> logger, AdbClient adbClient, IAdbServerLifetime adbServerLifetime)
     {
         _logger = logger;
         _adbClient = adbClient;
+        _adbServerLifetime = adbServerLifetime;
     }
 
     public event EventHandler<IReadOnlyList<DeviceInfo>>? DevicesChanged;
@@ -186,6 +188,8 @@ public class AdbDeviceProvider : IDeviceProvider, IAsyncDisposable
         {
             if (_monitorStarted)
                 return;
+            
+            await _adbServerLifetime.ReadyTask;
 
             // Monitor нужен, чтобы UI автоматически узнавал о подключениях/отключениях.
             // Важно: DeviceMonitor отдаёт "урезанные" DeviceData, поэтому мы на событии просто делаем Refresh.

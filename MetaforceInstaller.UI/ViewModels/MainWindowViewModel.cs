@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -16,12 +19,33 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly LogBuffer _logBuffer;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly IAdbService _adbService;
+    private readonly IDeviceProvider _deviceProvider;
+
+    private static readonly DeviceComboItem NotConnectedItem = DeviceComboItem.NotConnected();
 
     public Interaction<FilePickerRequest, string?> PickFileInteraction { get; } = new();
 
     public ICommand ChooseApkCommand { get; }
     public ICommand ChooseZipCommand { get; }
     public ICommand InstallCommand { get; }
+    
+    public ObservableCollection<DeviceComboItem> DeviceItems { get; } = new();
+
+    private DeviceComboItem? _selectedDeviceItem;
+
+    public DeviceComboItem? SelectedDeviceItem
+    {
+        get => _selectedDeviceItem;
+        set
+        {
+            if (ReferenceEquals(_selectedDeviceItem, value)) return;
+            _selectedDeviceItem = value;
+            RaisePropertyChanged(nameof(SelectedDeviceItem));
+            UpdateCommandStates();
+            
+            _ = ApplyDeviceSelection(value);
+        }
+    }
 
     private string _apkPath;
 
@@ -84,7 +108,9 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool CanInstall =>
         !IsInstalling &&
         !string.IsNullOrWhiteSpace(ApkPath) &&
-        !string.IsNullOrWhiteSpace(ZipPath);
+        !string.IsNullOrWhiteSpace(ZipPath) &&
+        SelectedDeviceItem is not null &&
+        !SelectedDeviceItem.IsPlaceholder;
 
     public bool CanPickFile => !IsInstalling;
 
@@ -97,11 +123,13 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel(
         LogBuffer logBuffer,
         ILogger<MainWindowViewModel> logger,
-        IAdbService adbService)
+        IAdbService adbService,
+        IDeviceProvider deviceProvider)
     {
         _logBuffer = logBuffer;
         _logger = logger;
         _adbService = adbService;
+        _deviceProvider = deviceProvider;
 
         _logBuffer.Changed += () =>
             Dispatcher.UIThread.Post(() => RaisePropertyChanged(nameof(LogsText)));
@@ -110,7 +138,106 @@ public partial class MainWindowViewModel : ViewModelBase
         ChooseZipCommand = new AsyncCommand(ChooseZipAsync, () => CanPickFile);
         InstallCommand = new AsyncCommand(InstallAsync, () => CanInstall);
 
+        _deviceProvider.DevicesChanged += OnDevicesChanged;
+        _deviceProvider.SelectionChanged += OnProviderSelectionChanged;
+        
+        DeviceItems.Add(NotConnectedItem);
+        SelectedDeviceItem = NotConnectedItem;
+
+        _ = InitializeDevicesAsync();
+
         _logger.LogInformation("MetaforceInstaller started");
+    }
+    
+    private async Task InitializeDevicesAsync()
+    {
+        try
+        {
+            await _deviceProvider.RefreshAsync();
+            var devices = await _deviceProvider.GetDevicesAsync();
+            await Dispatcher.UIThread.InvokeAsync(() => InjectDevicesToUi(devices));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to initialize device list");
+            await Dispatcher.UIThread.InvokeAsync(() => InjectDevicesToUi(Array.Empty<DeviceInfo>()));
+        }
+    }
+    
+    private void OnDevicesChanged(object? sender, IReadOnlyList<DeviceInfo> devices)
+    {
+        Dispatcher.UIThread.Post(() => InjectDevicesToUi(devices));
+    }
+    
+    private void OnProviderSelectionChanged(object? sender, DeviceInfo device)
+    {
+        // Provider может прислать null/пустые данные (например, при сбросе выбора/перезапуске сервера).
+        if (device is null)
+        {
+            SelectedDeviceItem = NotConnectedItem;
+            return;
+        }
+
+        var serial = device.SerialNumber;
+        if (string.IsNullOrWhiteSpace(serial))
+        {
+            SelectedDeviceItem = NotConnectedItem;
+            return;
+        }
+
+        // Keep UI selection synced if provider changes selection elsewhere.
+        Dispatcher.UIThread.Post(() =>
+        {
+            var match = DeviceItems.FirstOrDefault(x => x is not null && x.SerialNumber == serial);
+            if (match is not null)
+                SelectedDeviceItem = match;
+        });
+    }
+    
+    private void InjectDevicesToUi(IReadOnlyList<DeviceInfo> devices)
+    {
+        var previousSerial = SelectedDeviceItem?.SerialNumber ?? _deviceProvider.SelectedDevice?.SerialNumber;
+
+        DeviceItems.Clear();
+
+        if (devices is null || devices.Count == 0)
+        {
+            DeviceItems.Add(NotConnectedItem);
+            SelectedDeviceItem = NotConnectedItem;
+            return;
+        }
+
+        foreach (var d in devices)
+            DeviceItems.Add(DeviceComboItem.From(d));
+
+        var toSelect =
+            (previousSerial is not null
+                ? DeviceItems.FirstOrDefault(x => x.SerialNumber == previousSerial)
+                : null)
+            ?? DeviceItems.FirstOrDefault(x => !x.IsPlaceholder)
+            ?? NotConnectedItem;
+
+        SelectedDeviceItem = toSelect;
+    }
+    
+    private async Task ApplyDeviceSelection(DeviceComboItem? item)
+    {
+        try
+        {
+            if (item is null || item.IsPlaceholder || string.IsNullOrWhiteSpace(item.SerialNumber))
+            {
+                await _deviceProvider.ClearSelectionAsync();
+                return;
+            }
+
+            var ok = await _deviceProvider.TrySelectDeviceAsync(item.SerialNumber);
+            if (!ok)
+                _logger.LogInformation("Device selection rejected for serial: {Serial}", item.SerialNumber);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to apply device selection from UI");
+        }
     }
 
     private async Task ChooseApkAsync()

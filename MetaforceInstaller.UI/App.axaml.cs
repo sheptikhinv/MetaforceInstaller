@@ -4,7 +4,9 @@ using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
 using Avalonia.Markup.Xaml;
+using MetaforceInstaller.Core.Interfaces;
 using MetaforceInstaller.UI.DependencyInjection;
+using MetaforceInstaller.UI.Infrastructure;
 using MetaforceInstaller.UI.ViewModels;
 using MetaforceInstaller.UI.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +28,8 @@ public partial class App : Application
         var services = collection.BuildServiceProvider();
         
         var vm = services.GetService<MainWindowViewModel>();
+        var adbLifeTime = services.GetService<IAdbServerLifetime>();
+        ((AdbServerLifetime)adbLifeTime).StartInBackground();
         
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

@@ -1,6 +1,7 @@
 using AdvancedSharpAdbClient;
 using MetaforceInstaller.Core.Interfaces;
 using MetaforceInstaller.Core.Services;
+using MetaforceInstaller.UI.Infrastructure;
 using MetaforceInstaller.UI.Logging;
 using MetaforceInstaller.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<LogBuffer>();
         services.AddSingleton<IAdbBinaryProvider, AdbBinaryProvider>();
         services.AddSingleton<IAdbServerController, AdbServerController>();
+        services.AddSingleton<IAdbServerLifetime, AdbServerLifetime>();
         services.AddSingleton<IDeviceProvider, AdbDeviceProvider>();
         services.AddSingleton<IAdbOperations, AdbOperations>();
         services.AddSingleton<IAdbService, AdbServiceV2>();

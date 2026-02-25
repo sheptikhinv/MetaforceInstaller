@@ -44,6 +44,12 @@
 
             <!-- Left Panel - Buttons -->
             <StackPanel Grid.Column="0" Margin="20" Spacing="15">
+                <ComboBox
+                    HorizontalAlignment="Stretch"
+                    ItemsSource="{Binding DeviceItems}"
+                    SelectedItem="{Binding SelectedDeviceItem}"
+                    DisplayMemberBinding="{Binding DisplayText}" />
+                
                 <Button Content="Choose .apk"
                         Command="{Binding ChooseApkCommand}"
                         HorizontalAlignment="Stretch" />

@@ -12,11 +12,13 @@ public class AdbOperations : IAdbOperations
 {
     private readonly ILogger<AdbOperations> _logger;
     private readonly AdbClient _adbClient;
+    private readonly IAdbServerLifetime _adbServerLifetime;
 
-    public AdbOperations(ILogger<AdbOperations> logger, AdbClient adbClient)
+    public AdbOperations(ILogger<AdbOperations> logger, AdbClient adbClient, IAdbServerLifetime adbServerLifetime)
     {
         _logger = logger;
         _adbClient = adbClient;
+        _adbServerLifetime = adbServerLifetime;
     }
 
     public async Task InstallApkAsync(
@@ -27,6 +29,8 @@ public class AdbOperations : IAdbOperations
     {
         if (!File.Exists(apkPath))
             throw new FileNotFoundException("Could not find APK file.", apkPath);
+
+        await _adbServerLifetime.ReadyTask;
 
         var deviceData = ResolveDevice(serial);
         if (deviceData is null)
@@ -79,6 +83,8 @@ public class AdbOperations : IAdbOperations
     {
         if (!File.Exists(localPath))
             throw new FileNotFoundException("Could not find file.", localPath);
+        
+        await _adbServerLifetime.ReadyTask;
 
         var deviceData = ResolveDevice(serial);
         if (deviceData is null)
@@ -144,6 +150,8 @@ public class AdbOperations : IAdbOperations
     {
         if (string.IsNullOrWhiteSpace(command))
             throw new ArgumentException("Command cannot be empty.", nameof(command));
+        
+        await _adbServerLifetime.ReadyTask;
 
         var deviceData = ResolveDevice(serial);
         if (deviceData is null)

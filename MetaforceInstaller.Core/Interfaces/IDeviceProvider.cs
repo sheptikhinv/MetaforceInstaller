@@ -8,7 +8,7 @@ public interface IDeviceProvider
     Task RefreshAsync(CancellationToken cancellationToken = default);
     
     event EventHandler<IReadOnlyList<DeviceInfo>>? DevicesChanged;
-    event EventHandler<DeviceInfo>? SelectionChanged;
+    event EventHandler<DeviceInfo?>? SelectionChanged;
     
     DeviceInfo? SelectedDevice { get; set; }
     
