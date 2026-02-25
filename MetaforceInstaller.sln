@@ -1,10 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetaforceInstaller.Cli", "MetaforceInstaller.Cli\MetaforceInstaller.Cli.csproj", "{4928C2AC-6B63-4B18-9472-705807A15893}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetaforceInstaller.Core", "MetaforceInstaller.Core\MetaforceInstaller.Core.csproj", "{83961B6E-21E7-4B7A-B4FA-6128A44BCE1F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetaforceInstaller.UI", "MetaforceInstaller.UI\MetaforceInstaller.UI.csproj", "{546DDE53-4607-4852-B951-434061C46FB2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetaforceInstaller.UI", "MetaforceInstaller.UI\MetaforceInstaller.UI.csproj", "{08381C37-6ACE-41AD-B898-A8AE76FEF658}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -12,17 +10,13 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{4928C2AC-6B63-4B18-9472-705807A15893}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4928C2AC-6B63-4B18-9472-705807A15893}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4928C2AC-6B63-4B18-9472-705807A15893}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4928C2AC-6B63-4B18-9472-705807A15893}.Release|Any CPU.Build.0 = Release|Any CPU
 		{83961B6E-21E7-4B7A-B4FA-6128A44BCE1F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{83961B6E-21E7-4B7A-B4FA-6128A44BCE1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{83961B6E-21E7-4B7A-B4FA-6128A44BCE1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{83961B6E-21E7-4B7A-B4FA-6128A44BCE1F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{546DDE53-4607-4852-B951-434061C46FB2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{546DDE53-4607-4852-B951-434061C46FB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{546DDE53-4607-4852-B951-434061C46FB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{546DDE53-4607-4852-B951-434061C46FB2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08381C37-6ACE-41AD-B898-A8AE76FEF658}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08381C37-6ACE-41AD-B898-A8AE76FEF658}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08381C37-6ACE-41AD-B898-A8AE76FEF658}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08381C37-6ACE-41AD-B898-A8AE76FEF658}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -1,0 +1,304 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
+using System.Windows.Input;
+using Avalonia.Threading;
+using MetaforceInstaller.Core.Interfaces;
+using MetaforceInstaller.Core.Models;
+using MetaforceInstaller.UI.Infrastructure;
+using MetaforceInstaller.UI.Logging;
+using Microsoft.Extensions.Logging;
+
+namespace MetaforceInstaller.UI.ViewModels;
+
+public partial class MainWindowViewModel : ViewModelBase
+{
+    private readonly LogBuffer _logBuffer;
+    private readonly ILogger<MainWindowViewModel> _logger;
+    private readonly IAdbService _adbService;
+    private readonly IDeviceProvider _deviceProvider;
+
+    private static readonly DeviceComboItem NotConnectedItem = DeviceComboItem.NotConnected();
+
+    public Interaction<FilePickerRequest, string?> PickFileInteraction { get; } = new();
+
+    public ICommand ChooseApkCommand { get; }
+    public ICommand ChooseZipCommand { get; }
+    public ICommand InstallCommand { get; }
+    
+    public ObservableCollection<DeviceComboItem> DeviceItems { get; } = new();
+
+    private DeviceComboItem? _selectedDeviceItem;
+
+    public DeviceComboItem? SelectedDeviceItem
+    {
+        get => _selectedDeviceItem;
+        set
+        {
+            if (ReferenceEquals(_selectedDeviceItem, value)) return;
+            _selectedDeviceItem = value;
+            RaisePropertyChanged(nameof(SelectedDeviceItem));
+            UpdateCommandStates();
+            
+            _ = ApplyDeviceSelection(value);
+        }
+    }
+
+    private string _apkPath;
+
+    public string? ApkPath
+    {
+        get => _apkPath;
+        private set
+        {
+            if (_apkPath == value) return;
+            _apkPath = value;
+            RaisePropertyChanged(nameof(ApkPath));
+            RaisePropertyChanged(nameof(CanInstall));
+            UpdateCommandStates();
+        }
+    }
+
+    private string _zipPath;
+
+    public string? ZipPath
+    {
+        get => _zipPath;
+        private set
+        {
+            if (_zipPath == value) return;
+            _zipPath = value;
+            RaisePropertyChanged(nameof(ZipPath));
+            RaisePropertyChanged(nameof(CanInstall));
+            UpdateCommandStates();
+        }
+    }
+
+    private bool _isInstalling;
+
+    public bool IsInstalling
+    {
+        get => _isInstalling;
+        private set
+        {
+            if (_isInstalling == value) return;
+            _isInstalling = value;
+            RaisePropertyChanged(nameof(IsInstalling));
+            RaisePropertyChanged(nameof(CanInstall));
+            UpdateCommandStates();
+        }
+    }
+
+    private double _progressValue;
+
+    public double ProgressValue
+    {
+        get => _progressValue;
+        private set
+        {
+            if (Math.Abs(_progressValue - value) < 0.001) return;
+            _progressValue = value;
+            RaisePropertyChanged(nameof(ProgressValue));
+        }
+    }
+
+    public bool CanInstall =>
+        !IsInstalling &&
+        !string.IsNullOrWhiteSpace(ApkPath) &&
+        !string.IsNullOrWhiteSpace(ZipPath) &&
+        SelectedDeviceItem is not null &&
+        !SelectedDeviceItem.IsPlaceholder;
+
+    public bool CanPickFile => !IsInstalling;
+
+    public string LogsText => _logBuffer.Text;
+
+    public string Version { get; } =
+        Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version ?? "";
+
+    public MainWindowViewModel(
+        LogBuffer logBuffer,
+        ILogger<MainWindowViewModel> logger,
+        IAdbService adbService,
+        IDeviceProvider deviceProvider)
+    {
+        _logBuffer = logBuffer;
+        _logger = logger;
+        _adbService = adbService;
+        _deviceProvider = deviceProvider;
+
+        _logBuffer.Changed += () =>
+            Dispatcher.UIThread.Post(() => RaisePropertyChanged(nameof(LogsText)));
+
+        ChooseApkCommand = new AsyncCommand(ChooseApkAsync, () => CanPickFile);
+        ChooseZipCommand = new AsyncCommand(ChooseZipAsync, () => CanPickFile);
+        InstallCommand = new AsyncCommand(InstallAsync, () => CanInstall);
+
+        _deviceProvider.DevicesChanged += OnDevicesChanged;
+        _deviceProvider.SelectionChanged += OnProviderSelectionChanged;
+        
+        DeviceItems.Add(NotConnectedItem);
+        SelectedDeviceItem = NotConnectedItem;
+
+        _ = InitializeDevicesAsync();
+
+        _logger.LogInformation("MetaforceInstaller started");
+    }
+    
+    private async Task InitializeDevicesAsync()
+    {
+        try
+        {
+            await _deviceProvider.RefreshAsync();
+            var devices = await _deviceProvider.GetDevicesAsync();
+            await Dispatcher.UIThread.InvokeAsync(() => InjectDevicesToUi(devices));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to initialize device list");
+            await Dispatcher.UIThread.InvokeAsync(() => InjectDevicesToUi(Array.Empty<DeviceInfo>()));
+        }
+    }
+    
+    private void OnDevicesChanged(object? sender, IReadOnlyList<DeviceInfo> devices)
+    {
+        Dispatcher.UIThread.Post(() => InjectDevicesToUi(devices));
+    }
+    
+    private void OnProviderSelectionChanged(object? sender, DeviceInfo device)
+    {
+        // Provider может прислать null/пустые данные (например, при сбросе выбора/перезапуске сервера).
+        if (device is null)
+        {
+            SelectedDeviceItem = NotConnectedItem;
+            return;
+        }
+
+        var serial = device.SerialNumber;
+        if (string.IsNullOrWhiteSpace(serial))
+        {
+            SelectedDeviceItem = NotConnectedItem;
+            return;
+        }
+
+        // Keep UI selection synced if provider changes selection elsewhere.
+        Dispatcher.UIThread.Post(() =>
+        {
+            var match = DeviceItems.FirstOrDefault(x => x is not null && x.SerialNumber == serial);
+            if (match is not null)
+                SelectedDeviceItem = match;
+        });
+    }
+    
+    private void InjectDevicesToUi(IReadOnlyList<DeviceInfo> devices)
+    {
+        var previousSerial = SelectedDeviceItem?.SerialNumber ?? _deviceProvider.SelectedDevice?.SerialNumber;
+
+        DeviceItems.Clear();
+
+        if (devices is null || devices.Count == 0)
+        {
+            DeviceItems.Add(NotConnectedItem);
+            SelectedDeviceItem = NotConnectedItem;
+            return;
+        }
+
+        foreach (var d in devices)
+            DeviceItems.Add(DeviceComboItem.From(d));
+
+        var toSelect =
+            (previousSerial is not null
+                ? DeviceItems.FirstOrDefault(x => x.SerialNumber == previousSerial)
+                : null)
+            ?? DeviceItems.FirstOrDefault(x => !x.IsPlaceholder)
+            ?? NotConnectedItem;
+
+        SelectedDeviceItem = toSelect;
+    }
+    
+    private async Task ApplyDeviceSelection(DeviceComboItem? item)
+    {
+        try
+        {
+            if (item is null || item.IsPlaceholder || string.IsNullOrWhiteSpace(item.SerialNumber))
+            {
+                await _deviceProvider.ClearSelectionAsync();
+                return;
+            }
+
+            var ok = await _deviceProvider.TrySelectDeviceAsync(item.SerialNumber);
+            if (!ok)
+                _logger.LogInformation("Device selection rejected for serial: {Serial}", item.SerialNumber);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to apply device selection from UI");
+        }
+    }
+
+    private async Task ChooseApkAsync()
+    {
+        ApkPath = await PickFileInteraction.HandleAsync(
+            new FilePickerRequest(
+                Title: "Choose .apk",
+                FileTypeName: "APK Files",
+                Patterns: ["*.apk"])
+        );
+        _logger.LogInformation($"Chosen APK path: {ApkPath}");
+        RaisePropertyChanged(nameof(ApkPath));
+    }
+
+    private async Task ChooseZipAsync()
+    {
+        ZipPath = await PickFileInteraction.HandleAsync(
+            new FilePickerRequest(
+                Title: "Choose .zip",
+                FileTypeName: "ZIP Files",
+                Patterns: ["*.zip"])
+        );
+        RaisePropertyChanged(nameof(ZipPath));
+        _logger.LogInformation($"Chosen ZIP path: {ZipPath}");
+    }
+
+    private async Task InstallAsync()
+    {
+        if (!CanInstall)
+            return;
+
+        IsInstalling = true;
+
+        ProgressValue = 0;
+        
+        var uiProgress = new Progress<ProgressInfo>(info =>
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                ProgressValue = Math.Clamp(info.PercentageComplete, 0, 100);
+            });
+        });
+        
+        try
+        {
+            await _adbService.PerformInstallAsync(ApkPath, ZipPath, uiProgress, default);
+        }
+        finally
+        {
+            IsInstalling = false;
+        }
+    }
+
+    private void UpdateCommandStates()
+    {
+        (ChooseApkCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+        (ChooseZipCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+        (InstallCommand as AsyncCommand)?.RaiseCanExecuteChanged();
+    }
+
+    public MainWindowViewModel()
+    {
+    }
+}

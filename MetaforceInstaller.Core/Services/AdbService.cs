@@ -1,204 +1,87 @@
-using System.Reflection;
-using AdvancedSharpAdbClient;
-using AdvancedSharpAdbClient.DeviceCommands;
-using AdvancedSharpAdbClient.Models;
-using AdvancedSharpAdbClient.Receivers;
-using MetaforceInstaller.Core.Intefaces;
+using MetaforceInstaller.Core.Interfaces;
 using MetaforceInstaller.Core.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MetaforceInstaller.Core.Services;
 
 public class AdbService : IAdbService
 {
     private readonly ILogger<AdbService> _logger;
-    private readonly AdbClient _adbClient;
-    private DeviceData _deviceData;
+    private readonly IAdbServerController _adbServerController;
+    private readonly IDeviceProvider _deviceProvider;
+    private readonly IAdbOperations _adbOperations;
 
-    public event EventHandler<ProgressInfo>? ProgressChanged;
-    public event EventHandler<string>? StatusChanged;
+    private readonly object _initLock = new();
+    private Task? _serverStartTask;
 
-    public AdbService(ILogger<AdbService>? logger = null)
+    public AdbService(
+        ILogger<AdbService> logger,
+        IAdbServerController adbServerController,
+        IDeviceProvider deviceProvider,
+        IAdbOperations adbOperations)
     {
-        _logger = logger ?? new NullLogger<AdbService>();
-        var adbPath = GetAdbPath();
-        var server = new AdbServer();
-        var serverStatus = server.StartServer(adbPath, restartServerIfNewer: false);
-        _adbClient = new AdbClient();
-        RefreshDeviceData();
+        _logger = logger;
+        _adbServerController = adbServerController;
+        _deviceProvider = deviceProvider;
+        _adbOperations = adbOperations;
     }
 
-    public void RefreshDeviceData()
-    {
-        var devices = _adbClient.GetDevices();
-        _deviceData = devices.FirstOrDefault();
-    }
-
-    private void ExtractResource(string resourceName, string outputPath)
-    {
-        _logger.LogInformation($"Extracting resource: {resourceName} to {outputPath}");
-        using var stream = Assembly.GetAssembly(typeof(AdbService)).GetManifestResourceStream(resourceName);
-        using var fileStream = File.Create(outputPath);
-        stream.CopyTo(fileStream);
-        _logger.LogInformation($"Resource extracted: {resourceName} to {outputPath}");
-    }
-
-    private string GetAdbPath()
-    {
-        var tempDir = Path.Combine(Path.GetTempPath(), "MetaforceInstaller", "adb");
-        Directory.CreateDirectory(tempDir);
-
-        var adbPath = Path.Combine(tempDir, "adb.exe");
-
-        if (File.Exists(adbPath)) return adbPath;
-        ExtractResource("MetaforceInstaller.Core.adb.adb.exe", adbPath);
-
-        return adbPath;
-    }
-
-    private void OnProgressChanged(ProgressInfo progressInfo)
-    {
-        ProgressChanged?.Invoke(this, progressInfo);
-    }
-
-    private void OnStatusChanged(string status)
-    {
-        StatusChanged?.Invoke(this, status);
-    }
-
-    public void InstallApk(string apkPath)
-    {
-        InstallApkAsync(apkPath).Wait();
-    }
-
-    public async Task InstallApkAsync(string apkPath, IProgress<ProgressInfo>? progress = null,
+    public async Task PerformInstallAsync(string apkPath, string localPath, IProgress<ProgressInfo>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        try
+        await EnsureServerStartedAsync(cancellationToken);
+
+        var serial = _deviceProvider.SelectedDevice?.SerialNumber
+                     ?? throw new InvalidOperationException("No device selected.");
+
+        _logger.LogInformation("Starting full install to {Serial}", serial);
+
+        await _adbOperations.InstallApkAsync(serial, apkPath, progress, cancellationToken);
+        
+        progress?.Report(new ProgressInfo
         {
-            if (!File.Exists(apkPath))
-            {
-                _logger.LogCritical("Error: Could not find APK file.");
-                return;
-            }
+            PercentageComplete = 0,
+            Type = ProgressType.FileCopy,
+            CurrentFile = Path.GetFileName(localPath),
+            Message = "Подготовка к копированию файла..."
+        });
 
-            OnStatusChanged("Начинаем установку APK...");
-            _logger.LogInformation($"Installing APK: {apkPath}");
+        var remotePath = GetRemotePath(apkPath, localPath);
+        await _adbOperations.PushFileAsync(serial, localPath, remotePath, progress, cancellationToken);
+    }
 
-            progress?.Report(new ProgressInfo
-            {
-                PercentageComplete = 0,
-                Message = "Подготовка к установке APK...",
-                Type = ProgressType.Installation,
-                CurrentFile = Path.GetFileName(apkPath)
-            });
+    private Task EnsureServerStartedAsync(CancellationToken cancellationToken)
+    {
+        // cancellationToken тут используется только чтобы не начинать работу,
+        // если уже попросили отмену до старта.
+        cancellationToken.ThrowIfCancellationRequested();
 
-            var packageManager = new PackageManager(_adbClient, _deviceData);
+        var task = _serverStartTask;
+        if (task is not null)
+            return task;
 
-            await Task.Run(() =>
-            {
-                packageManager.InstallPackage(apkPath, installProgress =>
-                {
-                    var progressInfo = new ProgressInfo
-                    {
-                        PercentageComplete = (int)installProgress.UploadProgress,
-                        Message = $"Установка APK: {installProgress.UploadProgress:F1}%",
-                        Type = ProgressType.Installation,
-                        CurrentFile = Path.GetFileName(apkPath)
-                    };
-
-                    progress?.Report(progressInfo);
-                    OnProgressChanged(progressInfo);
-                });
-            }, cancellationToken);
-
-            OnStatusChanged("APK успешно установлен!");
-            _logger.LogInformation("APK successfully installed!");
-        }
-        catch (Exception ex)
+        lock (_initLock)
         {
-            _logger.LogCritical($"Error: {ex.Message}");
-            throw;
+            task = _serverStartTask;
+            if (task is not null)
+                return task;
+
+            _serverStartTask = task = StartServerCoreAsync();
+            return task;
         }
     }
 
-    public void CopyFile(string localPath, string remotePath)
+    private async Task StartServerCoreAsync()
     {
-        CopyFileAsync(localPath, remotePath).Wait();
+        _logger.LogInformation("Starting ADB server...");
+        await _adbServerController.StartAdbServerAsync();
+        _logger.LogInformation("ADB server is ready.");
     }
 
-    public async Task CopyFileAsync(string localPath, string remotePath, IProgress<ProgressInfo>? progress = null,
-        CancellationToken cancellationToken = default)
+    private static string GetRemotePath(string apkPath, string zipPath)
     {
-        try
-        {
-            if (!File.Exists(localPath))
-            {
-                _logger.LogCritical($"Error: Could not find file: {localPath}");
-                return;
-            }
-
-            OnStatusChanged("Начинаем копирование файла...");
-            _logger.LogInformation($"Copying file: {localPath} to {remotePath}");
-
-            var fileInfo = new FileInfo(localPath);
-
-            progress?.Report(new ProgressInfo
-            {
-                PercentageComplete = 0,
-                Message = "Подготовка к копированию файла...",
-                Type = ProgressType.FileCopy,
-                CurrentFile = Path.GetFileName(localPath),
-                TotalBytes = fileInfo.Length
-            });
-
-            var remoteDir = Path.GetDirectoryName(remotePath)?.Replace('\\', '/');
-            if (!string.IsNullOrEmpty(remoteDir))
-            {
-                var reciever = new ConsoleOutputReceiver();
-                await Task.Run(
-                    () => { _adbClient.ExecuteRemoteCommand($"mkdir -p \"{remoteDir}\"", _deviceData, reciever); },
-                    cancellationToken);
-            }
-            
-            _logger.LogInformation($"Ensured remote directory: {remoteDir}");
-
-            await Task.Run(() =>
-            {
-                using var fileStream = File.OpenRead(localPath);
-                var syncService = new SyncService(_adbClient, _deviceData);
-
-                syncService.Push(fileStream, remotePath, UnixFileStatus.DefaultFileMode, DateTime.Now,
-                    copyProgress =>
-                    {
-                        var progressInfo = new ProgressInfo
-                        {
-                            PercentageComplete = (int)copyProgress.ProgressPercentage,
-                            BytesTransferred = copyProgress.ReceivedBytesSize,
-                            TotalBytes = copyProgress.TotalBytesToReceive,
-                            Message = $"Копирование: {copyProgress.ProgressPercentage:F1}%",
-                            Type = ProgressType.FileCopy,
-                            CurrentFile = Path.GetFileName(localPath)
-                        };
-
-                        progress?.Report(progressInfo);
-                        OnProgressChanged(progressInfo);
-                    });
-            }, cancellationToken);
-
-            OnStatusChanged("Файл успешно скопирован!");
-            _logger.LogInformation("File successfully copied!");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogCritical($"Error: {ex.Message}");
-            throw;
-        }
-    }
-
-    public DeviceInfo GetDeviceInfo()
-    {
-        return new DeviceInfo(_deviceData.Serial, _deviceData.State.ToString(), _deviceData.Model, _deviceData.Name);
+        var apkInfo = ApkScrapper.GetApkInfo(apkPath);
+        var zipName = Path.GetFileName(zipPath);
+        return @$"/storage/emulated/0/Android/data/{apkInfo.PackageName}/files/{zipName}";
     }
 }
