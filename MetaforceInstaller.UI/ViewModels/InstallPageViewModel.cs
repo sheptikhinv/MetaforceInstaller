@@ -17,7 +17,7 @@ namespace MetaforceInstaller.UI.ViewModels;
 public partial class InstallPageViewModel : PageViewModelBase
 {
     public override string Title => "Install";
-    public override string Icon => "📱";
+    public override string Icon => "CellphoneArrowDownVariant";
     
     private readonly LogBuffer _logBuffer;
     private readonly ILogger<InstallPageViewModel> _logger;

@@ -3,7 +3,7 @@
 public class AboutPageViewModel : PageViewModelBase
 {
     public override string Title => "About";
-    public override string Icon => "ℹ️";
+    public override string Icon => "Information";
 
     public AboutPageViewModel()
     {

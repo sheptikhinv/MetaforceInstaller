@@ -1,6 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Windows.Input;
+using CommunityToolkit.Mvvm.Input;
 using MetaforceInstaller.UI.Infrastructure;
 
 namespace MetaforceInstaller.UI.ViewModels;
@@ -28,6 +31,42 @@ public class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private bool _isNavBarExpanded = true;
+
+    public bool IsNavBarExpanded
+    {
+        get => _isNavBarExpanded;
+        set
+        {
+            if (_isNavBarExpanded == value) return;
+            _isNavBarExpanded = value;
+            RaisePropertyChanged();
+            RaisePropertyChanged(nameof(NavBarWidth));
+        }
+    }
+    
+    private double _windowWidth = 900;
+    public double WindowWidth
+    {
+        get => _windowWidth;
+        set
+        {
+            if (Math.Abs(_windowWidth - value) < 0.1) return;
+            _windowWidth = value;
+            RaisePropertyChanged();
+            
+            // ну так-то угар но как-то криво
+            // if (value < 900 && IsNavBarExpanded)
+            //     IsNavBarExpanded = false;
+            // else if (value >= 700 && !IsNavBarExpanded)
+            //     IsNavBarExpanded = true;
+        }
+    }
+    
+    public double NavBarWidth => IsNavBarExpanded ? 220 : 64;
+    
+    public ICommand ToggleNavBarCommand { get; }
+
     public MainWindowViewModel(
         INavigationService navigationService,
         IEnumerable<PageViewModelBase> pages) 
@@ -38,6 +77,8 @@ public class MainWindowViewModel : ViewModelBase
         
         _navigationService.CurrentPageChanged += (s, e) =>
             RaisePropertyChanged(nameof(CurrentPage));
+        
+        ToggleNavBarCommand = new RelayCommand(() => IsNavBarExpanded = !IsNavBarExpanded);
         
         SelectedPage = Pages.FirstOrDefault();
     }

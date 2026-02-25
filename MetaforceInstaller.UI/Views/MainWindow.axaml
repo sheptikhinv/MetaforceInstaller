@@ -3,52 +3,82 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:MetaforceInstaller.UI.ViewModels"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="MetaforceInstaller.UI.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/icon.ico"
-        Title="MetaforceInstaller.UI">
-    <Grid ColumnDefinitions="200,*">
-        
-        <!-- Левая панель навигации -->
-        <Border Grid.Column="0" 
-                Background="#2C2C2C"
-                BorderBrush="#3C3C3C" 
-                BorderThickness="0,0,1,0">
-            
-            <ListBox ItemsSource="{Binding Pages}"
-                     SelectedItem="{Binding SelectedPage}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal" Margin="10,8">
-                            <TextBlock Text="{Binding Icon}" 
-                                       FontSize="20"
-                                       Margin="0,0,10,0"/>
-                            <TextBlock Text="{Binding Title}" 
-                                       VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-                
-                <ListBox.Styles>
-                    <Style Selector="ListBoxItem">
-                        <Setter Property="Padding" Value="0"/>
-                        <Setter Property="Margin" Value="4"/>
-                        <Setter Property="CornerRadius" Value="4"/>
-                    </Style>
-                    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
-                        <Setter Property="Background" Value="#3A3A3A"/>
-                    </Style>
-                    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-                        <Setter Property="Background" Value="#353535"/>
-                    </Style>
-                </ListBox.Styles>
-            </ListBox>
+        Title="MetaforceInstaller.UI"
+        Width="{Binding WindowWidth, Mode=TwoWay}">
+    <Grid ColumnDefinitions="Auto,*">
+
+        <!-- Боковая панель -->
+        <Border Grid.Column="0"
+                BorderBrush="Gray"
+                BorderThickness="0,0,1,0"
+                Padding="8"
+                Width="{Binding NavBarWidth}">
+
+            <Border.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.2" />
+                </Transitions>
+            </Border.Transitions>
+
+            <DockPanel>
+
+                <!-- Заголовок + кнопка -->
+                <StackPanel DockPanel.Dock="Top"
+                            Spacing="16"
+                            Margin="0,8,0,16">
+
+                    <!-- Кнопка-гамбургер -->
+                    <Button Command="{Binding ToggleNavBarCommand}"
+                            Content="☰"
+                            Padding="8"
+                            Margin="4,0"
+                            HorizontalAlignment="Left">
+                    </Button>
+
+                </StackPanel>
+
+                <!-- Навигация -->
+                <ListBox ItemsSource="{Binding Pages}"
+                         SelectedItem="{Binding SelectedPage}"
+                         Background="Transparent"
+                         BorderThickness="0">
+
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal"
+                                        Spacing="12"
+                                        Margin="8,6"
+                                        ToolTip.Tip="{Binding Title}">
+
+                                <!-- Иконка -->
+                                <materialIcons:MaterialIcon Kind="{Binding Icon}"
+                                           Width="24"
+                                           Height="24" />
+
+                                <!-- Текст -->
+                                <TextBlock Text="{Binding Title}"
+                                           FontSize="14"
+                                           VerticalAlignment="Center"
+                                           IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsNavBarExpanded}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+
+                </ListBox>
+
+            </DockPanel>
+
         </Border>
-        
-        <!-- Контент справа -->
-        <ContentControl Grid.Column="1" 
-                        Content="{Binding CurrentPage}"/>
-        
+
+        <!-- Контент -->
+        <ContentControl Grid.Column="1"
+                        Content="{Binding CurrentPage}"
+                        Margin="16" />
+
     </Grid>
 </Window>
