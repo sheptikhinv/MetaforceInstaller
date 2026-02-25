@@ -37,7 +37,8 @@
                             Content="☰"
                             Padding="8"
                             Margin="4,0"
-                            HorizontalAlignment="Left">
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center">
                     </Button>
 
                 </StackPanel>
@@ -50,22 +51,25 @@
 
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal"
-                                        Spacing="12"
-                                        Margin="8,6"
-                                        ToolTip.Tip="{Binding Title}">
-
-                                <!-- Иконка -->
-                                <materialIcons:MaterialIcon Kind="{Binding Icon}"
-                                           Width="24"
-                                           Height="24" />
-
-                                <!-- Текст -->
-                                <TextBlock Text="{Binding Title}"
-                                           FontSize="14"
-                                           VerticalAlignment="Center"
-                                           IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsNavBarExpanded}" />
-                            </StackPanel>
+                            <!-- Используем Grid вместо StackPanel для гибкости -->
+                            <Grid ToolTip.Tip="{Binding Title}" Margin="8,6">
+            
+                                <!-- Когда развернуто - контент слева -->
+                                <StackPanel Orientation="Horizontal" 
+                                            Spacing="12"
+                                            HorizontalAlignment="Left"
+                                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsNavBarExpanded}">
+                                    <materialIcons:MaterialIcon Kind="{Binding Icon}" Width="24" Height="24" />
+                                    <TextBlock Text="{Binding Title}" FontSize="14" VerticalAlignment="Center" />
+                                </StackPanel>
+            
+                                <!-- Когда свернуто - только иконка по центру -->
+                                <materialIcons:MaterialIcon Kind="{Binding Icon}" 
+                                                            Width="24" 
+                                                            Height="24"
+                                                            HorizontalAlignment="Center"
+                                                            IsVisible="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsNavBarExpanded}" />
+                            </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
 
