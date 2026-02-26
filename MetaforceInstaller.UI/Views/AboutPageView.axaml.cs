@@ -4,9 +4,9 @@ using Avalonia.Markup.Xaml;
 
 namespace MetaforceInstaller.UI.Views;
 
-public partial class MainWindow : Window
+public partial class AboutPageView : UserControl
 {
-    public MainWindow()
+    public AboutPageView()
     {
         InitializeComponent();
     }

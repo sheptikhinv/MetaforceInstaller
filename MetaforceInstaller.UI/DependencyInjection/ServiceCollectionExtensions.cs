@@ -22,8 +22,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAdbOperations, AdbOperations>();
         services.AddSingleton<IAdbService, AdbService>();
         services.AddSingleton<AdbClient>();
-
-        // Plug LogBuffer into Microsoft.Extensions.Logging pipeline
+        
         services.AddSingleton<ILoggerProvider, LogBufferLoggerProvider>();
 
         services.AddLogging(builder =>
@@ -32,8 +31,20 @@ public static class ServiceCollectionExtensions
             builder.AddConsole();
             // Providers are taken from DI (including LogBufferLoggerProvider above)
         });
-
+        services.AddSingleton<INavigationService, NavigationService>();
+        
         services.AddSingleton<MainWindowViewModel>();
-        // ... register other services here (IAdbService, view models, etc.)
+
+        services.AddPage<InstallPageViewModel>();
+        services.AddPage<LogsPageViewModel>();
+        services.AddPage<AboutPageViewModel>();
+    }
+
+    public static IServiceCollection AddPage<TPage>(this IServiceCollection services)
+        where TPage : PageViewModelBase
+    {
+        services.AddSingleton<TPage>();
+        services.AddSingleton<PageViewModelBase>(sp => sp.GetRequiredService<TPage>());
+        return services;
     }
 }

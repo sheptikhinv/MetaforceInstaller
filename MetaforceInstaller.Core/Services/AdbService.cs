@@ -48,6 +48,13 @@ public class AdbService : IAdbService
 
         var remotePath = GetRemotePath(apkPath, localPath);
         await _adbOperations.PushFileAsync(serial, localPath, remotePath, progress, cancellationToken);
+        
+        progress?.Report(new ProgressInfo
+        {
+            PercentageComplete = 100,
+            Type = ProgressType.Installation,
+            Message = "Установка завершена"
+        });
     }
 
     private Task EnsureServerStartedAsync(CancellationToken cancellationToken)

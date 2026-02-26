@@ -1,12 +1,12 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
 namespace MetaforceInstaller.UI.Views;
 
-public partial class MainWindow : Window
+public partial class LogsPageView : UserControl
 {
-    public MainWindow()
+    public LogsPageView()
     {
         InitializeComponent();
     }
