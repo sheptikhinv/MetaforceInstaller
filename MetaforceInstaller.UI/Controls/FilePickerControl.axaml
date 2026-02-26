@@ -4,17 +4,31 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="MetaforceInstaller.UI.Controls.FilePickerControl"
-             x:Name="Root">
-    <DockPanel VerticalAlignment="Center" HorizontalSpacing="8">
-        <Label Content="{Binding Title, ElementName=Root}"
+             x:Name="Root"
+             HorizontalAlignment="Stretch">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="FilePickerLabel"/>
+            <ColumnDefinition Width="8"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="8"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <Label Grid.Column="0"
+               Content="{Binding Title, ElementName=Root}"
                IsVisible="{Binding ShowTitle, ElementName=Root}"
                VerticalContentAlignment="Center"/>
-        <Button DockPanel.Dock="Right"
-                Content="..."
-                IsEnabled="{Binding !IsPickingDisabled, ElementName=Root}"
-                Click="OnBrowseClick" />
-        <TextBox Text="{Binding Path, ElementName=Root}"
+
+        <TextBox Grid.Column="2"
+                 Text="{Binding Path, ElementName=Root}"
                  IsReadOnly="True"
                  Watermark="Not selected"/>
-    </DockPanel>
+
+        <Button Grid.Column="4"
+                Content="Choose.."
+                IsEnabled="{Binding !IsPickingDisabled, ElementName=Root}"
+                Click="OnBrowseClick"
+                VerticalAlignment="Stretch"/>
+    </Grid>
 </UserControl>

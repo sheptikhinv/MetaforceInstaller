@@ -18,7 +18,7 @@ public partial class InstallPageViewModel : PageViewModelBase
 {
     public override string Title => "Install";
     public override string Icon => "CellphoneArrowDownVariant";
-    
+
     private readonly LogBuffer _logBuffer;
     private readonly ILogger<InstallPageViewModel> _logger;
     private readonly IAdbService _adbService;
@@ -26,16 +26,11 @@ public partial class InstallPageViewModel : PageViewModelBase
 
     private static readonly DeviceComboItem NotConnectedItem = DeviceComboItem.NotConnected();
 
-    public Interaction<FilePickerRequest, string?> PickFileInteraction { get; } = new();
-
-    public ICommand ChooseApkCommand { get; }
-    public ICommand ChooseZipCommand { get; }
     public ICommand InstallCommand { get; }
-    
+
     public ObservableCollection<DeviceComboItem> DeviceItems { get; } = new();
 
     private DeviceComboItem? _selectedDeviceItem;
-
     public DeviceComboItem? SelectedDeviceItem
     {
         get => _selectedDeviceItem;
@@ -45,35 +40,34 @@ public partial class InstallPageViewModel : PageViewModelBase
             _selectedDeviceItem = value;
             RaisePropertyChanged(nameof(SelectedDeviceItem));
             UpdateCommandStates();
-            
             _ = ApplyDeviceSelection(value);
         }
     }
 
-    private string _apkPath;
-
+    private string? _apkPath;
     public string? ApkPath
     {
         get => _apkPath;
-        private set
+        set
         {
             if (_apkPath == value) return;
             _apkPath = value;
+            _logger.LogInformation("Chosen APK path: {Path}", value);
             RaisePropertyChanged(nameof(ApkPath));
             RaisePropertyChanged(nameof(CanInstall));
             UpdateCommandStates();
         }
     }
 
-    private string _zipPath;
-
+    private string? _zipPath;
     public string? ZipPath
     {
         get => _zipPath;
-        private set
+        set
         {
             if (_zipPath == value) return;
             _zipPath = value;
+            _logger.LogInformation("Chosen ZIP path: {Path}", value);
             RaisePropertyChanged(nameof(ZipPath));
             RaisePropertyChanged(nameof(CanInstall));
             UpdateCommandStates();
@@ -81,7 +75,6 @@ public partial class InstallPageViewModel : PageViewModelBase
     }
 
     private bool _isInstalling;
-
     public bool IsInstalling
     {
         get => _isInstalling;
@@ -96,7 +89,6 @@ public partial class InstallPageViewModel : PageViewModelBase
     }
 
     private double _progressValue;
-
     public double ProgressValue
     {
         get => _progressValue;
@@ -114,8 +106,6 @@ public partial class InstallPageViewModel : PageViewModelBase
         !string.IsNullOrWhiteSpace(ZipPath) &&
         SelectedDeviceItem is not null &&
         !SelectedDeviceItem.IsPlaceholder;
-
-    public bool CanPickFile => !IsInstalling;
 
     public string LogsText => _logBuffer.Text;
 
@@ -137,13 +127,11 @@ public partial class InstallPageViewModel : PageViewModelBase
         _logBuffer.Changed += () =>
             Dispatcher.UIThread.Post(() => RaisePropertyChanged(nameof(LogsText)));
 
-        ChooseApkCommand = new AsyncCommand(ChooseApkAsync, () => CanPickFile);
-        ChooseZipCommand = new AsyncCommand(ChooseZipAsync, () => CanPickFile);
         InstallCommand = new AsyncCommand(InstallAsync, () => CanInstall);
 
         _deviceProvider.DevicesChanged += OnDevicesChanged;
         _deviceProvider.SelectionChanged += OnProviderSelectionChanged;
-        
+
         DeviceItems.Add(NotConnectedItem);
         SelectedDeviceItem = NotConnectedItem;
 
@@ -151,7 +139,7 @@ public partial class InstallPageViewModel : PageViewModelBase
 
         _logger.LogInformation("MetaforceInstaller started");
     }
-    
+
     private async Task InitializeDevicesAsync()
     {
         try
@@ -166,37 +154,26 @@ public partial class InstallPageViewModel : PageViewModelBase
             await Dispatcher.UIThread.InvokeAsync(() => InjectDevicesToUi(Array.Empty<DeviceInfo>()));
         }
     }
-    
+
     private void OnDevicesChanged(object? sender, IReadOnlyList<DeviceInfo> devices)
-    {
-        Dispatcher.UIThread.Post(() => InjectDevicesToUi(devices));
-    }
-    
+        => Dispatcher.UIThread.Post(() => InjectDevicesToUi(devices));
+
     private void OnProviderSelectionChanged(object? sender, DeviceInfo device)
     {
-        // Provider может прислать null/пустые данные (например, при сбросе выбора/перезапуске сервера).
-        if (device is null)
+        if (device is null || string.IsNullOrWhiteSpace(device.SerialNumber))
         {
             SelectedDeviceItem = NotConnectedItem;
             return;
         }
 
-        var serial = device.SerialNumber;
-        if (string.IsNullOrWhiteSpace(serial))
-        {
-            SelectedDeviceItem = NotConnectedItem;
-            return;
-        }
-
-        // Keep UI selection synced if provider changes selection elsewhere.
         Dispatcher.UIThread.Post(() =>
         {
-            var match = DeviceItems.FirstOrDefault(x => x is not null && x.SerialNumber == serial);
+            var match = DeviceItems.FirstOrDefault(x => x.SerialNumber == device.SerialNumber);
             if (match is not null)
                 SelectedDeviceItem = match;
         });
     }
-    
+
     private void InjectDevicesToUi(IReadOnlyList<DeviceInfo> devices)
     {
         var previousSerial = SelectedDeviceItem?.SerialNumber ?? _deviceProvider.SelectedDevice?.SerialNumber;
@@ -222,7 +199,7 @@ public partial class InstallPageViewModel : PageViewModelBase
 
         SelectedDeviceItem = toSelect;
     }
-    
+
     private async Task ApplyDeviceSelection(DeviceComboItem? item)
     {
         try
@@ -243,47 +220,17 @@ public partial class InstallPageViewModel : PageViewModelBase
         }
     }
 
-    private async Task ChooseApkAsync()
-    {
-        ApkPath = await PickFileInteraction.HandleAsync(
-            new FilePickerRequest(
-                Title: "Choose .apk",
-                FileTypeName: "APK Files",
-                Patterns: ["*.apk"])
-        );
-        _logger.LogInformation($"Chosen APK path: {ApkPath}");
-        RaisePropertyChanged(nameof(ApkPath));
-    }
-
-    private async Task ChooseZipAsync()
-    {
-        ZipPath = await PickFileInteraction.HandleAsync(
-            new FilePickerRequest(
-                Title: "Choose .zip",
-                FileTypeName: "ZIP Files",
-                Patterns: ["*.zip"])
-        );
-        RaisePropertyChanged(nameof(ZipPath));
-        _logger.LogInformation($"Chosen ZIP path: {ZipPath}");
-    }
-
     private async Task InstallAsync()
     {
-        if (!CanInstall)
-            return;
+        if (!CanInstall) return;
 
         IsInstalling = true;
-
         ProgressValue = 0;
-        
+
         var uiProgress = new Progress<ProgressInfo>(info =>
-        {
             Dispatcher.UIThread.Post(() =>
-            {
-                ProgressValue = Math.Clamp(info.PercentageComplete, 0, 100);
-            });
-        });
-        
+                ProgressValue = Math.Clamp(info.PercentageComplete, 0, 100)));
+
         try
         {
             await _adbService.PerformInstallAsync(ApkPath, ZipPath, uiProgress, default);
@@ -295,13 +242,7 @@ public partial class InstallPageViewModel : PageViewModelBase
     }
 
     private void UpdateCommandStates()
-    {
-        (ChooseApkCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-        (ChooseZipCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-        (InstallCommand as AsyncCommand)?.RaiseCanExecuteChanged();
-    }
+        => (InstallCommand as AsyncCommand)?.RaiseCanExecuteChanged();
 
-    public InstallPageViewModel()
-    {
-    }
+    public InstallPageViewModel() { }
 }
