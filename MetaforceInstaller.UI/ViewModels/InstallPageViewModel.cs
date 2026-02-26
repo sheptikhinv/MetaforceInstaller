@@ -18,7 +18,7 @@ public partial class InstallPageViewModel : PageViewModelBase
 {
     public override string Title => "Install";
     public override string Icon => "CellphoneArrowDownVariant";
-    
+
     private readonly ILogger<InstallPageViewModel> _logger;
     private readonly IAdbService _adbService;
     private readonly IDeviceProvider _deviceProvider;
@@ -30,6 +30,7 @@ public partial class InstallPageViewModel : PageViewModelBase
     public ObservableCollection<DeviceComboItem> DeviceItems { get; } = new();
 
     private DeviceComboItem? _selectedDeviceItem;
+
     public DeviceComboItem? SelectedDeviceItem
     {
         get => _selectedDeviceItem;
@@ -39,13 +40,14 @@ public partial class InstallPageViewModel : PageViewModelBase
             _selectedDeviceItem = value;
             RaisePropertyChanged(nameof(SelectedDeviceItem));
             UpdateCommandStates();
-    
+
             if (!_isInitializing)
                 _ = ApplyDeviceSelection(value);
         }
     }
 
     private string? _apkPath;
+
     public string? ApkPath
     {
         get => _apkPath;
@@ -61,6 +63,7 @@ public partial class InstallPageViewModel : PageViewModelBase
     }
 
     private string? _zipPath;
+
     public string? ZipPath
     {
         get => _zipPath;
@@ -76,6 +79,7 @@ public partial class InstallPageViewModel : PageViewModelBase
     }
 
     private bool _isInstalling;
+
     public bool IsInstalling
     {
         get => _isInstalling;
@@ -90,6 +94,7 @@ public partial class InstallPageViewModel : PageViewModelBase
     }
 
     private double _progressValue;
+
     public double ProgressValue
     {
         get => _progressValue;
@@ -100,6 +105,20 @@ public partial class InstallPageViewModel : PageViewModelBase
             RaisePropertyChanged(nameof(ProgressValue));
         }
     }
+
+    private string _progressMessage = "Doing nothing";
+
+    public string ProgressMessage
+    {
+        get => _progressMessage;
+        private set
+        {
+            if (_progressMessage == value) return;
+            _progressMessage = value;
+            RaisePropertyChanged(nameof(ProgressMessage));
+        }   
+    }
+    
 
     public bool CanInstall =>
         !IsInstalling &&
@@ -237,7 +256,10 @@ public partial class InstallPageViewModel : PageViewModelBase
 
         var uiProgress = new Progress<ProgressInfo>(info =>
             Dispatcher.UIThread.Post(() =>
-                ProgressValue = Math.Clamp(info.PercentageComplete, 0, 100)));
+            {
+                ProgressValue = Math.Clamp(info.PercentageComplete, 0, 100);
+                ProgressMessage = info.Message ?? "";
+            }));
 
         try
         {
@@ -252,5 +274,7 @@ public partial class InstallPageViewModel : PageViewModelBase
     private void UpdateCommandStates()
         => (InstallCommand as AsyncCommand)?.RaiseCanExecuteChanged();
 
-    public InstallPageViewModel() { }
+    public InstallPageViewModel()
+    {
+    }
 }

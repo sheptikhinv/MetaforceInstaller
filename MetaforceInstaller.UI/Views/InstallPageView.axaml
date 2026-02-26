@@ -43,22 +43,24 @@
                 Path="{Binding ApkPath, Mode=TwoWay}"
                 FileTypeName="APK Files"
                 Patterns="*.apk"
-                IsPickingDisabled="{Binding IsInstalling}"/>
+                IsPickingDisabled="{Binding IsInstalling}" />
 
             <controls:FilePickerControl
                 Title="ZIP file"
                 Path="{Binding ZipPath, Mode=TwoWay}"
                 FileTypeName="ZIP Files"
                 Patterns="*.zip"
-                IsPickingDisabled="{Binding IsInstalling}"/>
+                IsPickingDisabled="{Binding IsInstalling}" />
 
             <Button Content="Install"
                     Command="{Binding InstallCommand}"
                     HorizontalAlignment="Stretch" />
         </StackPanel>
 
-        <ProgressBar Grid.Row="1"
-                     Height="20" Minimum="0" Maximum="100"
-                     Value="{Binding ProgressValue}" />
+        <StackPanel Grid.Row="1">
+            <Label Content="{Binding ProgressMessage}"/>
+            <ProgressBar Height="20" Minimum="0" Maximum="100"
+                         Value="{Binding ProgressValue}" />
+        </StackPanel>
     </Grid>
 </UserControl>
