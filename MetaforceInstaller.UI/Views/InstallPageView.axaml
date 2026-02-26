@@ -1,0 +1,66 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MetaforceInstaller.UI.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="clr-namespace:MetaforceInstaller.UI.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="MetaforceInstaller.UI.Views.InstallPageView"
+             x:DataType="vm:InstallPageViewModel">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SvgImage x:Key="Logo" Source="/Assets/logo_red.svg" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SvgImage x:Key="Logo" Source="/Assets/logo_red.svg" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Design.DataContext>
+        <vm:InstallPageViewModel />
+    </Design.DataContext>
+
+    <Grid RowSpacing="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.IsSharedSizeScope="True" Grid.Column="0" Spacing="16">
+            <ComboBox
+                HorizontalAlignment="Stretch"
+                ItemsSource="{Binding DeviceItems}"
+                SelectedItem="{Binding SelectedDeviceItem}"
+                DisplayMemberBinding="{Binding DisplayText}" />
+
+            <controls:FilePickerControl
+                Title="APK file"
+                Path="{Binding ApkPath, Mode=TwoWay}"
+                FileTypeName="APK Files"
+                Patterns="*.apk"
+                IsPickingDisabled="{Binding IsInstalling}" />
+
+            <controls:FilePickerControl
+                Title="ZIP file"
+                Path="{Binding ZipPath, Mode=TwoWay}"
+                FileTypeName="ZIP Files"
+                Patterns="*.zip"
+                IsPickingDisabled="{Binding IsInstalling}" />
+
+            <Button Content="Install"
+                    Command="{Binding InstallCommand}"
+                    HorizontalAlignment="Stretch" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1">
+            <Label Content="{Binding ProgressMessage}"/>
+            <ProgressBar Height="20" Minimum="0" Maximum="100"
+                         Value="{Binding ProgressValue}" />
+        </StackPanel>
+    </Grid>
+</UserControl>

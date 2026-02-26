@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="MetaforceInstaller.UI.Controls.FilePickerControl"
+             x:Name="Root"
+             HorizontalAlignment="Stretch">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="FilePickerLabel"/>
+            <ColumnDefinition Width="8"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="8"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <Label Grid.Column="0"
+               Content="{Binding Title, ElementName=Root}"
+               IsVisible="{Binding ShowTitle, ElementName=Root}"
+               VerticalContentAlignment="Center"/>
+
+        <TextBox Grid.Column="2"
+                 Text="{Binding Path, ElementName=Root}"
+                 IsReadOnly="True"
+                 Watermark="Not selected"/>
+
+        <Button Grid.Column="4"
+                Content="Choose.."
+                IsEnabled="{Binding !IsPickingDisabled, ElementName=Root}"
+                Click="OnBrowseClick"
+                VerticalAlignment="Stretch"/>
+    </Grid>
+</UserControl>

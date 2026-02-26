@@ -1,0 +1,122 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:MetaforceInstaller.UI.ViewModels"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="MetaforceInstaller.UI.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/icon.ico"
+        Title="MetaforceInstaller.UI"
+        Width="{Binding WindowWidth, Mode=TwoWay}"
+        MinWidth="672"
+        MinHeight="344">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SvgImage x:Key="Logo" Source="/Assets/logo_red.svg" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SvgImage x:Key="Logo" Source="/Assets/logo_red.svg" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid ColumnDefinitions="Auto,*">
+
+        <!-- Боковая панель -->
+        <Border Grid.Column="0"
+                BorderBrush="Gray"
+                BorderThickness="0,0,1,0"
+                Padding="8"
+                Width="{Binding NavBarWidth}">
+
+            <Border.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.2" />
+                </Transitions>
+            </Border.Transitions>
+
+            <DockPanel>
+
+                <!-- Заголовок + кнопка -->
+                <StackPanel DockPanel.Dock="Top"
+                            Spacing="16"
+                            Margin="0,8,0,16">
+
+                    <!-- Кнопка-гамбургер -->
+                    <Button Command="{Binding ToggleNavBarCommand}"
+                            Content="☰"
+                            Padding="8"
+                            Margin="4,0"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center">
+                    </Button>
+
+                </StackPanel>
+
+                <!-- Низ навбара: лого (только когда развернут), версия (всегда, по центру) -->
+                <StackPanel DockPanel.Dock="Bottom"
+                            Spacing="6"
+                            Margin="0,8"
+                            HorizontalAlignment="Stretch">
+
+                    <Image Margin="12,8,12,0"
+                           VerticalAlignment="Bottom"
+                           Source="{DynamicResource Logo}"
+                           HorizontalAlignment="Center"
+                           IsVisible="{Binding IsNavBarExpanded}" />
+
+                    <TextBlock Text="{Binding Version}"
+                               FontFamily="Consolas,Courier New,monospace"
+                               FontSize="14"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Навигация -->
+                <ListBox ItemsSource="{Binding Pages}"
+                         SelectedItem="{Binding SelectedPage}"
+                         Background="Transparent"
+                         BorderThickness="0">
+
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <!-- Используем Grid вместо StackPanel для гибкости -->
+                            <Grid ToolTip.Tip="{Binding Title}" Margin="8,6">
+            
+                                <!-- Когда развернуто - контент слева -->
+                                <StackPanel Orientation="Horizontal" 
+                                            Spacing="12"
+                                            HorizontalAlignment="Left"
+                                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsNavBarExpanded}">
+                                    <materialIcons:MaterialIcon Kind="{Binding Icon}" Width="24" Height="24" />
+                                    <TextBlock Text="{Binding Title}" FontSize="14" VerticalAlignment="Center" />
+                                </StackPanel>
+            
+                                <!-- Когда свернуто - только иконка по центру -->
+                                <materialIcons:MaterialIcon Kind="{Binding Icon}" 
+                                                            Width="24" 
+                                                            Height="24"
+                                                            HorizontalAlignment="Center"
+                                                            IsVisible="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).IsNavBarExpanded}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+
+                </ListBox>
+
+            </DockPanel>
+
+        </Border>
+
+        <!-- Контент -->
+        <ContentControl Grid.Column="1"
+                        Content="{Binding CurrentPage}"
+                        Margin="16" />
+
+    </Grid>
+</Window>
