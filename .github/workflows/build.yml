@@ -107,13 +107,13 @@ jobs:
 
       - name: Archive artifacts
         run: |
-          zip -r MetaforceInstaller-windows.zip ./publish-windows
-          zip -r MetaforceInstaller-linux.zip ./publish-linux
+          cd ./publish-windows && zip -r ../MetaforceInstaller-windows.zip . && cd ..
+          cd ./publish-linux && zip -r ../MetaforceInstaller-linux.zip . && cd ..
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           files: |
             MetaforceInstaller-windows.zip
             MetaforceInstaller-linux.zip
