@@ -39,7 +39,9 @@ public partial class InstallPageViewModel : PageViewModelBase
             _selectedDeviceItem = value;
             RaisePropertyChanged(nameof(SelectedDeviceItem));
             UpdateCommandStates();
-            _ = ApplyDeviceSelection(value);
+    
+            if (!_isInitializing)
+                _ = ApplyDeviceSelection(value);
         }
     }
 
@@ -106,6 +108,8 @@ public partial class InstallPageViewModel : PageViewModelBase
         SelectedDeviceItem is not null &&
         !SelectedDeviceItem.IsPlaceholder;
 
+    private bool _isInitializing = true;
+
     public InstallPageViewModel(
         ILogger<InstallPageViewModel> logger,
         IAdbService adbService,
@@ -134,12 +138,20 @@ public partial class InstallPageViewModel : PageViewModelBase
         {
             await _deviceProvider.RefreshAsync();
             var devices = await _deviceProvider.GetDevicesAsync();
-            await Dispatcher.UIThread.InvokeAsync(() => InjectDevicesToUi(devices));
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _isInitializing = false;
+                InjectDevicesToUi(devices);
+            });
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to initialize device list");
-            await Dispatcher.UIThread.InvokeAsync(() => InjectDevicesToUi(Array.Empty<DeviceInfo>()));
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _isInitializing = false;
+                InjectDevicesToUi(Array.Empty<DeviceInfo>());
+            });
         }
     }
 
@@ -150,12 +162,16 @@ public partial class InstallPageViewModel : PageViewModelBase
     {
         if (device is null || string.IsNullOrWhiteSpace(device.SerialNumber))
         {
-            SelectedDeviceItem = NotConnectedItem;
+            Dispatcher.UIThread.Post(() => SelectedDeviceItem = NotConnectedItem);
             return;
         }
 
         Dispatcher.UIThread.Post(() =>
         {
+            // Уже выбран этот девайс — ничего не делаем
+            if (SelectedDeviceItem?.SerialNumber == device.SerialNumber)
+                return;
+
             var match = DeviceItems.FirstOrDefault(x => x.SerialNumber == device.SerialNumber);
             if (match is not null)
                 SelectedDeviceItem = match;
@@ -197,6 +213,10 @@ public partial class InstallPageViewModel : PageViewModelBase
                 await _deviceProvider.ClearSelectionAsync();
                 return;
             }
+
+            // Уже выбран — не дёргаем провайдер лишний раз
+            if (_deviceProvider.SelectedDevice?.SerialNumber == item.SerialNumber)
+                return;
 
             var ok = await _deviceProvider.TrySelectDeviceAsync(item.SerialNumber);
             if (!ok)
