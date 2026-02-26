@@ -9,7 +9,9 @@
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/icon.ico"
         Title="MetaforceInstaller.UI"
-        Width="{Binding WindowWidth, Mode=TwoWay}">
+        Width="{Binding WindowWidth, Mode=TwoWay}"
+        MinWidth="672"
+        MinHeight="344">
 
     <Window.Resources>
         <ResourceDictionary>

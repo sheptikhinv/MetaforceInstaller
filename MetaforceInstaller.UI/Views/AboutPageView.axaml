@@ -4,5 +4,22 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="MetaforceInstaller.UI.Views.AboutPageView">
-    Welcome to Avalonia!
+    <StackPanel HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch">
+        <Image Source="/Assets/icon256x256.png"
+               Width="128"
+               Height="128" />
+        <Label HorizontalAlignment="Center"
+               VerticalAlignment="Center"
+               FontSize="36"
+               Content="MetaforceInstaller.UI" />
+        <Label HorizontalAlignment="Center" 
+               VerticalAlignment="Center"
+               FontSize="18"
+               Content="Developed by slavagm for Metaforce franchise"/>
+        <Label HorizontalAlignment="Center"
+               VerticalAlignment="Center"
+               FontSize="18"
+               Content="2025"/>
+    </StackPanel>
 </UserControl>
