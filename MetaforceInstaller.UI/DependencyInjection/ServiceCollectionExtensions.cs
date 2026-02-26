@@ -36,6 +36,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<MainWindowViewModel>();
 
         services.AddPage<InstallPageViewModel>();
+        services.AddPage<LogsPageViewModel>();
         services.AddPage<AboutPageViewModel>();
     }
 
