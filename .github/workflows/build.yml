@@ -1,0 +1,121 @@
+﻿name: .NET Core Console
+
+on:
+  push:
+    branches: [ "master" ]
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build-windows:
+    strategy:
+      matrix:
+        #configuration: [Debug, Release]
+        configuration: [Release]
+
+    runs-on: windows-latest
+
+    env:
+      Solution_Name: MetaforceInstaller
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install .NET Core
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore $env:Solution_Name
+
+      - name: Build
+        run: dotnet build $env:Solution_Name --configuration ${{ matrix.configuration }} --no-restore
+
+      - name: Test
+        run: dotnet test $env:Solution_Name --no-restore --verbosity normal
+
+      - name: Publish
+        run: dotnet publish $env:Solution_Name --configuration ${{ matrix.configuration }} --no-build --output ./publish
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: MetaforceInstaller-windows
+          path: ./publish
+
+  build-linux:
+    strategy:
+      matrix:
+        #configuration: [Debug, Release]
+        configuration: [Release]
+
+    runs-on: ubuntu-latest
+
+    env:
+      Solution_Name: MetaforceInstaller
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install .NET Core
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore $Solution_Name
+
+      - name: Build
+        run: dotnet build $Solution_Name --configuration ${{ matrix.configuration }} --no-restore
+
+      - name: Test
+        run: dotnet test $Solution_Name --no-restore --verbosity normal
+
+      - name: Publish
+        run: dotnet publish $Solution_Name --configuration ${{ matrix.configuration }} --no-build --output ./publish
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: MetaforceInstaller-linux
+          path: ./publish
+  
+  release:
+    needs: [ build-windows, build-linux ]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions: write-all
+    steps:
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: MetaforceInstaller-windows
+          path: ./publish-windows
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: MetaforceInstaller-linux
+          path: ./publish-linux
+
+      - name: Archive artifacts
+        run: |
+          zip -r MetaforceInstaller-windows.zip ./publish-windows
+          zip -r MetaforceInstaller-linux.zip ./publish-linux
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}   # => "v1.2.3"
+          files: |
+            MetaforceInstaller-windows.zip
+            MetaforceInstaller-linux.zip
