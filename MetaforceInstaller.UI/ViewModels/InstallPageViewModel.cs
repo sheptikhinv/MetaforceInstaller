@@ -18,8 +18,7 @@ public partial class InstallPageViewModel : PageViewModelBase
 {
     public override string Title => "Install";
     public override string Icon => "CellphoneArrowDownVariant";
-
-    private readonly LogBuffer _logBuffer;
+    
     private readonly ILogger<InstallPageViewModel> _logger;
     private readonly IAdbService _adbService;
     private readonly IDeviceProvider _deviceProvider;
@@ -107,25 +106,14 @@ public partial class InstallPageViewModel : PageViewModelBase
         SelectedDeviceItem is not null &&
         !SelectedDeviceItem.IsPlaceholder;
 
-    public string LogsText => _logBuffer.Text;
-
-    public string Version { get; } =
-        Assembly.GetExecutingAssembly()
-            .GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version ?? "";
-
     public InstallPageViewModel(
-        LogBuffer logBuffer,
         ILogger<InstallPageViewModel> logger,
         IAdbService adbService,
         IDeviceProvider deviceProvider)
     {
-        _logBuffer = logBuffer;
         _logger = logger;
         _adbService = adbService;
         _deviceProvider = deviceProvider;
-
-        _logBuffer.Changed += () =>
-            Dispatcher.UIThread.Post(() => RaisePropertyChanged(nameof(LogsText)));
 
         InstallCommand = new AsyncCommand(InstallAsync, () => CanInstall);
 

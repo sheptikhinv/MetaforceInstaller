@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reflection;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 using MetaforceInstaller.UI.Infrastructure;
@@ -64,6 +65,10 @@ public class MainWindowViewModel : ViewModelBase
     }
     
     public double NavBarWidth => IsNavBarExpanded ? 220 : 64;
+    
+    public string Version { get; } =
+        Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version ?? "";
     
     public ICommand ToggleNavBarCommand { get; }
 

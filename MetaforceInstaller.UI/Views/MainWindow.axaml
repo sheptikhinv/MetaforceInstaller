@@ -10,6 +10,20 @@
         Icon="/Assets/icon.ico"
         Title="MetaforceInstaller.UI"
         Width="{Binding WindowWidth, Mode=TwoWay}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SvgImage x:Key="Logo" Source="/Assets/logo_red.svg" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SvgImage x:Key="Logo" Source="/Assets/logo_red.svg" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
     <Grid ColumnDefinitions="Auto,*">
 
         <!-- Боковая панель -->
@@ -41,6 +55,24 @@
                             HorizontalContentAlignment="Center">
                     </Button>
 
+                </StackPanel>
+
+                <!-- Низ навбара: лого (только когда развернут), версия (всегда, по центру) -->
+                <StackPanel DockPanel.Dock="Bottom"
+                            Spacing="6"
+                            Margin="0,8"
+                            HorizontalAlignment="Stretch">
+
+                    <Image Margin="12,8,12,0"
+                           VerticalAlignment="Bottom"
+                           Source="{DynamicResource Logo}"
+                           HorizontalAlignment="Center"
+                           IsVisible="{Binding IsNavBarExpanded}" />
+
+                    <TextBlock Text="{Binding Version}"
+                               FontFamily="Consolas,Courier New,monospace"
+                               FontSize="14"
+                               HorizontalAlignment="Center" />
                 </StackPanel>
 
                 <!-- Навигация -->
